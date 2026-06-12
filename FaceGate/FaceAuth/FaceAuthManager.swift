@@ -1,0 +1,163 @@
+import Combine
+import Foundation
+import CoreVideo
+
+/// The main face authentication orchestrator.
+/// Ties together camera capture → face detection → embedding → matching
+/// to perform real-time face unlock when the auth overlay is shown.
+final class FaceAuthManager: ObservableObject {
+    /// Current authentication state.
+    @Published var state: FaceAuthState = .idle
+    @Published var statusMessage: String = ""
+
+    /// The camera manager — exposed for binding the preview layer.
+    let cameraManager = CameraManager()
+
+    private let faceDetector = FaceDetector()
+    private let faceEmbedder = FaceEmbedder.shared
+    private let faceMatcher: FaceMatcher
+    private let dataStore = FaceDataStore.shared
+
+    /// Enrolled embeddings loaded from disk.
+    private var enrolledEmbeddings: [[Float]] = []
+
+    /// Frame counter for performance — only run full pipeline every Nth frame.
+    private var frameCount: Int = 0
+    private let processEveryNFrames = 5
+
+    /// Timeout tracking.
+    private var authStartTime: Date?
+    private let authTimeout: TimeInterval = 8  // seconds before showing fallback hint
+
+    /// Completion callback.
+    private var onResult: ((Bool) -> Void)?
+
+    enum FaceAuthState: Equatable {
+        case idle
+        case scanning
+        case matched
+        case noMatch
+        case timeout
+        case error(String)
+    }
+
+    init() {
+        let threshold = UserDefaults.standard.float(forKey: FGConstants.faceUnlockThresholdKey)
+        self.faceMatcher = FaceMatcher(
+            threshold: threshold > 0 ? threshold : FGConstants.defaultFaceUnlockThreshold
+        )
+    }
+
+    // MARK: - Public API
+
+    /// Whether face unlock is enabled and enrolled.
+    var isAvailable: Bool {
+        UserDefaults.standard.bool(forKey: FGConstants.faceUnlockEnabledKey) &&
+        UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey) &&
+        dataStore.hasEnrollment
+    }
+
+    /// Begin face authentication. Activates the camera and starts scanning.
+    /// - Parameter completion: Called with `true` if face matches, `false` otherwise.
+    func startAuthentication(completion: @escaping (Bool) -> Void) {
+        guard isAvailable else {
+            completion(false)
+            return
+        }
+
+        // Load enrolled embeddings.
+        guard let enrollment = dataStore.load(), enrollment.isValid else {
+            state = .error("No valid face enrollment found")
+            completion(false)
+            return
+        }
+
+        enrolledEmbeddings = enrollment.embeddings
+        onResult = completion
+        frameCount = 0
+        authStartTime = Date()
+        state = .scanning
+        statusMessage = "Looking for your face…"
+
+        cameraManager.onFrameCaptured = { [weak self] pixelBuffer in
+            self?.processAuthFrame(pixelBuffer)
+        }
+
+        cameraManager.startCapture()
+
+        // Schedule timeout check.
+        DispatchQueue.main.asyncAfter(deadline: .now() + authTimeout) { [weak self] in
+            guard let self = self, self.state == .scanning else { return }
+            self.state = .timeout
+            self.statusMessage = "Face not recognized"
+        }
+    }
+
+    /// Stop face authentication and release the camera.
+    func stopAuthentication() {
+        cameraManager.stopCapture()
+        cameraManager.onFrameCaptured = nil
+        state = .idle
+        enrolledEmbeddings = []
+        onResult = nil
+    }
+
+    /// Update the matching threshold from user settings.
+    func updateThreshold(_ newThreshold: Float) {
+        faceMatcher.setThreshold(newThreshold)
+        UserDefaults.standard.set(newThreshold, forKey: FGConstants.faceUnlockThresholdKey)
+    }
+
+    // MARK: - Frame Processing
+
+    private func processAuthFrame(_ pixelBuffer: CVPixelBuffer) {
+        frameCount += 1
+
+        // Only run the full pipeline every Nth frame for performance.
+        guard frameCount % processEveryNFrames == 0 else { return }
+        guard state == .scanning else { return }
+
+        faceDetector.detectFaces(in: pixelBuffer) { [weak self] observations in
+            guard let self = self else { return }
+
+            // We need exactly one face for security.
+            guard observations.count == 1, let face = observations.first else {
+                DispatchQueue.main.async {
+                    if observations.isEmpty {
+                        self.statusMessage = "Looking for your face…"
+                    } else {
+                        self.statusMessage = "Only one face allowed"
+                    }
+                }
+                return
+            }
+
+            // Crop the face.
+            guard let croppedFace = self.faceDetector.cropFace(from: pixelBuffer, observation: face) else {
+                return
+            }
+
+            // Generate embedding.
+            guard let liveEmbedding = self.faceEmbedder.generateEmbedding(from: croppedFace) else {
+                return
+            }
+
+            // Compare against enrolled embeddings.
+            let result = self.faceMatcher.match(
+                liveEmbedding: liveEmbedding,
+                against: self.enrolledEmbeddings
+            )
+
+            if result.isMatch {
+                DispatchQueue.main.async {
+                    self.state = .matched
+                    self.statusMessage = "Face recognized!"
+                    self.cameraManager.stopCapture()
+                    self.cameraManager.onFrameCaptured = nil
+                    self.onResult?(true)
+                    self.onResult = nil
+                }
+            }
+        }
+    }
+}
