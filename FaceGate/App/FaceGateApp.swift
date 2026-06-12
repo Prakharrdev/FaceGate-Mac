@@ -14,7 +14,7 @@ struct FaceGateApp: App {
         MenuBarExtra {
             MenuBarView()
         } label: {
-            Image(systemName: FGConstants.menuBarIcon)
+            Image(FGConstants.menuBarIcon)
         }
         .menuBarExtraStyle(.window)
 
