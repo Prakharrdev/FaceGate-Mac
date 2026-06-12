@@ -1,7 +1,9 @@
 # Project specific exclusions
 PURPOSE.md
 purpose.md
-project.xcodeproj/
+*.xcodeproj/
+*.xcworkspace/
+FaceGate.xcodeproj/
 
 # macOS / OS X
 .DS_Store
@@ -34,3 +36,22 @@ __pycache__/
 venv/
 .venv/
 env/
+
+# Certificates and Provisioning Profiles
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.cer
+*.p8
+*.cert
+
+# Application Database, Embeddings, and User Data (Do not commit PII or Face Data)
+*.sqlite
+*.sqlite3
+*.db
+*.realm
+
+
+# macOS / Xcode Specific Overrides
+*.moved-aside
+.Trashes
