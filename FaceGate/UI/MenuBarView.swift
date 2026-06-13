@@ -25,7 +25,7 @@ struct MenuBarView: View {
                     .foregroundStyle(
                         LinearGradient(
                             colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                                     Color(hue: 0.72, saturation: 0.6, brightness: 0.90)],
+                                     Color(hue: 0.61, saturation: 0.75, brightness: 0.85)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )

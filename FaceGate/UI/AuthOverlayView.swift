@@ -39,7 +39,7 @@ struct AuthOverlayView: View {
                     .foregroundStyle(
                         LinearGradient(
                             colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                                     Color(hue: 0.72, saturation: 0.6, brightness: 0.90)],
+                                     Color(hue: 0.61, saturation: 0.75, brightness: 0.85)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -303,7 +303,7 @@ struct AuthOverlayView: View {
                                 LinearGradient(
                                     colors: [
                                         Color(hue: 0.58, saturation: 0.5, brightness: 0.8).opacity(0.3),
-                                        Color(hue: 0.65, saturation: 0.4, brightness: 0.7).opacity(0.3),
+                                        Color(hue: 0.61, saturation: 0.6, brightness: 0.75).opacity(0.3),
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -427,7 +427,7 @@ struct AuthOverlayView: View {
                                     LinearGradient(
                                         colors: [
                                             Color(hue: 0.58, saturation: 0.6, brightness: 0.85),
-                                            Color(hue: 0.65, saturation: 0.5, brightness: 0.75),
+                                            Color(hue: 0.61, saturation: 0.7, brightness: 0.80),
                                         ],
                                         startPoint: .leading,
                                         endPoint: .trailing

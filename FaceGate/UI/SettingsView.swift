@@ -377,18 +377,18 @@ private struct AboutView: View {
         VStack(spacing: 20) {
             Spacer()
 
-            Image(FGConstants.menuBarIcon)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 48, height: 48)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                                 Color(hue: 0.72, saturation: 0.6, brightness: 0.90)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            if let appIcon = NSApp.applicationIconImage {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 64, height: 64)
+            } else {
+                Image(systemName: "app.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 64, height: 64)
+                    .foregroundColor(.secondary)
+            }
 
             VStack(spacing: 4) {
                 Text("FaceGate")
