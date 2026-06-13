@@ -187,13 +187,25 @@ private struct AuthSettingsView: View {
                     if showChangePassword {
                         VStack(alignment: .leading, spacing: 8) {
                             if PasswordAuth.shared.isPasswordSet {
-                                SecureField("Current password", text: $oldPassword)
-                                    .textFieldStyle(.roundedBorder)
+                                LabeledContent("Current password") {
+                                    SecureField("", text: $oldPassword)
+                                        .labelsHidden()
+                                        .textFieldStyle(.roundedBorder)
+                                        .multilineTextAlignment(.leading)
+                                }
                             }
-                            SecureField("New password", text: $newPassword)
-                                .textFieldStyle(.roundedBorder)
-                            SecureField("Confirm new password", text: $confirmPassword)
-                                .textFieldStyle(.roundedBorder)
+                            LabeledContent("New password") {
+                                SecureField("", text: $newPassword)
+                                    .labelsHidden()
+                                    .textFieldStyle(.roundedBorder)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            LabeledContent("Confirm new password") {
+                                SecureField("", text: $confirmPassword)
+                                    .labelsHidden()
+                                    .textFieldStyle(.roundedBorder)
+                                    .multilineTextAlignment(.leading)
+                            }
 
                             if let error = passwordError {
                                 Text(error)

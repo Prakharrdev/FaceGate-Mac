@@ -376,6 +376,7 @@ struct AuthOverlayView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
                 .foregroundColor(.white)
+                .multilineTextAlignment(.leading)
                 .padding(12)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
