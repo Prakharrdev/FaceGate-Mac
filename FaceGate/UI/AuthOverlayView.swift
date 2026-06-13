@@ -31,9 +31,11 @@ struct AuthOverlayView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                // Shield icon.
-                Image(systemName: "shield.lefthalf.filled")
-                    .font(.system(size: 40, weight: .light))
+                // Menu bar icon.
+                Image(FGConstants.menuBarIcon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
                     .foregroundStyle(
                         LinearGradient(
                             colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),

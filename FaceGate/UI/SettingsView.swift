@@ -377,8 +377,10 @@ private struct AboutView: View {
         VStack(spacing: 20) {
             Spacer()
 
-            Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 48, weight: .light))
+            Image(FGConstants.menuBarIcon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 48, height: 48)
                 .foregroundStyle(
                     LinearGradient(
                         colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),

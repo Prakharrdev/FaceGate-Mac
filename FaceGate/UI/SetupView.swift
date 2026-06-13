@@ -67,8 +67,10 @@ struct SetupView: View {
         VStack(spacing: 20) {
             Spacer()
 
-            Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 56, weight: .light))
+            Image(FGConstants.menuBarIcon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 56, height: 56)
                 .foregroundStyle(
                     LinearGradient(
                         colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
@@ -270,8 +272,10 @@ struct SetupView: View {
                 .frame(maxWidth: 360)
 
             HStack(spacing: 4) {
-                Image(systemName: "shield.lefthalf.filled")
-                    .font(.system(size: 14))
+                Image(FGConstants.menuBarIcon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 14, height: 14)
                 Image(systemName: "arrow.right")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)

@@ -18,8 +18,10 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header.
             HStack {
-                Image(systemName: "face.smiling.fill")
-                    .font(.system(size: 16, weight: .medium))
+                Image(FGConstants.menuBarIcon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 16, height: 16)
                     .foregroundStyle(
                         LinearGradient(
                             colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
