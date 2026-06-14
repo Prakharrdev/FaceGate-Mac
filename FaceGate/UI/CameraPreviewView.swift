@@ -39,10 +39,19 @@ final class CameraPreviewNSView: NSView {
 
     override func layout() {
         super.layout()
-        previewLayer.frame = bounds
-        if let connection = previewLayer.connection, connection.isVideoMirroringSupported {
-            connection.automaticallyAdjustsVideoMirroring = false
-            connection.isVideoMirrored = true
+        previewLayer.bounds = bounds
+        previewLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        
+        if let connection = previewLayer.connection {
+            if connection.isVideoMirroringSupported {
+                connection.automaticallyAdjustsVideoMirroring = false
+                connection.isVideoMirrored = true
+                previewLayer.transform = CATransform3DIdentity
+            } else {
+                previewLayer.transform = CATransform3DMakeScale(-1, 1, 1)
+            }
+        } else {
+            previewLayer.transform = CATransform3DMakeScale(-1, 1, 1)
         }
     }
 }
