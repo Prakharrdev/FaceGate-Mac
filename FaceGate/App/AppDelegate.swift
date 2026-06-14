@@ -69,7 +69,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Settings Window
 
+    private func closeMenuBarWindow() {
+        for window in NSApp.windows {
+            let className = String(describing: type(of: window))
+            if className.contains("StatusItem") || className.contains("MenuWindow") || (window.title.isEmpty && window.isVisible && className.contains("Window")) {
+                window.close()
+            }
+        }
+    }
+
     @objc private func openSettingsWindow() {
+        closeMenuBarWindow()
+
         if let existing = settingsWindow {
             existing.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
