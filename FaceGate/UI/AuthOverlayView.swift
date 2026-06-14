@@ -11,11 +11,13 @@ struct AuthOverlayView: View {
     let onCancel: () -> Void
 
     @StateObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var faceAuthManager = AuthenticationManager.shared.faceAuthManager
     @State private var passwordInput: String = ""
     @State private var showPasswordField: Bool = false
     @State private var showFallbacks: Bool = false
     @State private var shakePassword: Bool = false
     @State private var faceAuthStarted: Bool = false
+    @State private var isTimedOut: Bool = false
 
     var body: some View {
         ZStack {
@@ -53,7 +55,7 @@ struct AuthOverlayView: View {
                     .padding(.bottom, 20)
 
                 // Face Unlock camera preview (if available and enabled).
-                if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
+                if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField && !isTimedOut {
                     faceUnlockView
                         .padding(.bottom, 16)
                 } else {
@@ -73,14 +75,19 @@ struct AuthOverlayView: View {
                     .padding(.bottom, 8)
 
                 // Status message.
-                if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
-                    Text(authManager.faceAuthManager.statusMessage.isEmpty
+                if isTimedOut {
+                    Text("Face Recognition Timed Out")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.red.opacity(0.8))
+                        .padding(.bottom, 24)
+                } else if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
+                    Text(faceAuthManager.statusMessage.isEmpty
                          ? "Authenticate to unlock this app"
-                         : authManager.faceAuthManager.statusMessage)
+                         : faceAuthManager.statusMessage)
                         .font(.system(size: 13, weight: .regular))
                         .foregroundColor(.white.opacity(0.6))
                         .padding(.bottom, 24)
-                        .animation(.easeInOut(duration: 0.2), value: authManager.faceAuthManager.statusMessage)
+                        .animation(.easeInOut(duration: 0.2), value: faceAuthManager.statusMessage)
                 } else {
                     Text("Authenticate to unlock this app")
                         .font(.system(size: 13, weight: .regular))
@@ -97,7 +104,7 @@ struct AuthOverlayView: View {
                 if showPasswordField {
                     passwordAuthView
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else if showFallbacks || !authManager.isFaceUnlockAvailable {
+                } else if showFallbacks || isTimedOut || !authManager.isFaceUnlockAvailable {
                     authButtonsView
                         .transition(.opacity)
                 } else {
@@ -171,11 +178,11 @@ struct AuthOverlayView: View {
                 }
             }
         }
-        .onChangeCompat(of: authManager.faceAuthManager.state) { newState in
-            if newState == .timeout && !showFallbacks {
-                // Face auth timed out — show fallback options.
+        .onChangeCompat(of: faceAuthManager.state) { newState in
+            if newState == .timeout {
                 withAnimation {
-                    showFallbacks = true
+                    isTimedOut = true
+                    authManager.stopFaceAuth()
                 }
             }
         }
@@ -194,14 +201,14 @@ struct AuthOverlayView: View {
     private var faceUnlockView: some View {
         ZStack {
             // Camera preview.
-            CameraPreviewView(captureSession: authManager.faceAuthManager.cameraManager.captureSession)
+            CameraPreviewView(captureSession: faceAuthManager.cameraManager.captureSession)
                 .frame(width: 200, height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
 
             // Scanning animation overlay.
             ScanningAnimation(
-                isScanning: authManager.faceAuthManager.state == .scanning,
-                isMatched: authManager.faceAuthManager.state == .matched
+                isScanning: faceAuthManager.state == .scanning,
+                isMatched: faceAuthManager.state == .matched
             )
         }
         .frame(width: 200, height: 200)
@@ -289,6 +296,7 @@ struct AuthOverlayView: View {
                 Button(action: {
                     withAnimation {
                         showFallbacks = false
+                        isTimedOut = false
                         faceAuthStarted = true
                         authManager.authenticateWithFace { success in
                             if success {

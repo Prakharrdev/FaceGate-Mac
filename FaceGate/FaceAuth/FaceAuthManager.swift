@@ -27,7 +27,7 @@ final class FaceAuthManager: ObservableObject {
 
     /// Timeout tracking.
     private var authStartTime: Date?
-    private let authTimeout: TimeInterval = 8  // seconds before showing fallback hint
+    private let authTimeout: TimeInterval = 15  // seconds before showing fallback hint
 
     /// Completion callback.
     private var onResult: ((Bool) -> Void)?
