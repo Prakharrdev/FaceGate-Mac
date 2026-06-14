@@ -243,30 +243,55 @@ private struct LockedAppRow: View {
 
             Spacer()
 
-            if hasActiveSession {
-                Text("Unlocked")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.green.opacity(0.8))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.green.opacity(0.15))
-                    )
-            } else {
-                Text("Locked")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.orange.opacity(0.8))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.orange.opacity(0.15))
-                    )
-            }
+            LockToggleButton(bundleIdentifier: app.bundleIdentifier, hasActiveSession: hasActiveSession)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
+    }
+}
+
+private struct LockToggleButton: View {
+    let bundleIdentifier: String
+    let hasActiveSession: Bool
+    
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: {
+            if hasActiveSession {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    SessionManager.shared.revokeSession(for: bundleIdentifier)
+                }
+            }
+        }) {
+            Group {
+                if #available(macOS 14.0, *) {
+                    Image(systemName: hasActiveSession ? "lock.open.fill" : "lock.fill")
+                        .contentTransition(.symbolEffect(.replace))
+                } else {
+                    Image(systemName: hasActiveSession ? "lock.open.fill" : "lock.fill")
+                }
+            }
+            .font(.system(size: 13, weight: .medium))
+            .foregroundColor(hasActiveSession ? .green : .secondary)
+            .frame(width: 24, height: 24)
+            .background(
+                Circle()
+                    .fill(hasActiveSession && isHovered ? Color.green.opacity(0.12) : Color.clear)
+            )
+            .scaleEffect(isHovered && hasActiveSession ? 1.05 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .onHover { hovering in
+            if hasActiveSession {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    isHovered = hovering
+                }
+            } else {
+                isHovered = false
+            }
+        }
     }
 }
 
