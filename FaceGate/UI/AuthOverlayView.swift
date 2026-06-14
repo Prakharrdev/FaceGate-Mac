@@ -429,6 +429,7 @@ struct AuthOverlayView: View {
                 // Back button.
                 Button(action: {
                     withAnimation {
+                        showFallbacks = true
                         showPasswordField = false
                         passwordInput = ""
                     }
@@ -469,7 +470,13 @@ struct AuthOverlayView: View {
 
     private func authenticateWithTouchID() {
         authManager.stopFaceAuth()
-        authManager.authenticateWithTouchID(appName: appName) { _ in }
+        authManager.authenticateWithTouchID(appName: appName) { success in
+            if !success {
+                withAnimation {
+                    showFallbacks = true
+                }
+            }
+        }
     }
 
     private func showPasswordAuth() {
