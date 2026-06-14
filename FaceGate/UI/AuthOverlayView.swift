@@ -11,11 +11,13 @@ struct AuthOverlayView: View {
     let onCancel: () -> Void
 
     @StateObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var faceAuthManager = AuthenticationManager.shared.faceAuthManager
     @State private var passwordInput: String = ""
     @State private var showPasswordField: Bool = false
     @State private var showFallbacks: Bool = false
     @State private var shakePassword: Bool = false
     @State private var faceAuthStarted: Bool = false
+    @State private var isTimedOut: Bool = false
 
     var body: some View {
         ZStack {
@@ -39,7 +41,7 @@ struct AuthOverlayView: View {
                     .foregroundStyle(
                         LinearGradient(
                             colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                                     Color(hue: 0.72, saturation: 0.6, brightness: 0.90)],
+                                     Color(hue: 0.61, saturation: 0.75, brightness: 0.85)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -53,7 +55,7 @@ struct AuthOverlayView: View {
                     .padding(.bottom, 20)
 
                 // Face Unlock camera preview (if available and enabled).
-                if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
+                if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField && !isTimedOut {
                     faceUnlockView
                         .padding(.bottom, 16)
                 } else {
@@ -73,14 +75,19 @@ struct AuthOverlayView: View {
                     .padding(.bottom, 8)
 
                 // Status message.
-                if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
-                    Text(authManager.faceAuthManager.statusMessage.isEmpty
+                if isTimedOut {
+                    Text("Face Recognition Timed Out")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.red.opacity(0.8))
+                        .padding(.bottom, 24)
+                } else if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
+                    Text(faceAuthManager.statusMessage.isEmpty
                          ? "Authenticate to unlock this app"
-                         : authManager.faceAuthManager.statusMessage)
+                         : faceAuthManager.statusMessage)
                         .font(.system(size: 13, weight: .regular))
                         .foregroundColor(.white.opacity(0.6))
                         .padding(.bottom, 24)
-                        .animation(.easeInOut(duration: 0.2), value: authManager.faceAuthManager.statusMessage)
+                        .animation(.easeInOut(duration: 0.2), value: faceAuthManager.statusMessage)
                 } else {
                     Text("Authenticate to unlock this app")
                         .font(.system(size: 13, weight: .regular))
@@ -90,13 +97,14 @@ struct AuthOverlayView: View {
 
                 // Auth state feedback.
                 authFeedbackView
+                    .frame(height: isLockedOut ? 64 : 24)
                     .padding(.bottom, 16)
 
                 // Auth methods.
                 if showPasswordField {
                     passwordAuthView
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else if showFallbacks || !authManager.isFaceUnlockAvailable {
+                } else if showFallbacks || isTimedOut || !authManager.isFaceUnlockAvailable {
                     authButtonsView
                         .transition(.opacity)
                 } else {
@@ -112,6 +120,7 @@ struct AuthOverlayView: View {
                             .foregroundColor(.white.opacity(0.4))
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                     .padding(.top, 8)
 
                     // Show fallback buttons below face unlock.
@@ -137,6 +146,7 @@ struct AuthOverlayView: View {
                         .foregroundColor(.white.opacity(0.4))
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
                 .padding(.bottom, 40)
             }
             .frame(maxWidth: 360)
@@ -168,14 +178,21 @@ struct AuthOverlayView: View {
                 }
             }
         }
-        .onChangeCompat(of: authManager.faceAuthManager.state) { newState in
-            if newState == .timeout && !showFallbacks {
-                // Face auth timed out — show fallback options.
+        .onChangeCompat(of: faceAuthManager.state) { newState in
+            if newState == .timeout {
                 withAnimation {
-                    showFallbacks = true
+                    isTimedOut = true
+                    authManager.stopFaceAuth()
                 }
             }
         }
+    }
+
+    private var isLockedOut: Bool {
+        if case .lockedOut = authManager.authState {
+            return true
+        }
+        return false
     }
 
     // MARK: - Face Unlock View
@@ -184,14 +201,14 @@ struct AuthOverlayView: View {
     private var faceUnlockView: some View {
         ZStack {
             // Camera preview.
-            CameraPreviewView(captureSession: authManager.faceAuthManager.cameraManager.captureSession)
+            CameraPreviewView(captureSession: faceAuthManager.cameraManager.captureSession)
                 .frame(width: 200, height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
 
             // Scanning animation overlay.
             ScanningAnimation(
-                isScanning: authManager.faceAuthManager.state == .scanning,
-                isMatched: authManager.faceAuthManager.state == .matched
+                isScanning: faceAuthManager.state == .scanning,
+                isMatched: faceAuthManager.state == .matched
             )
         }
         .frame(width: 200, height: 200)
@@ -219,6 +236,7 @@ struct AuthOverlayView: View {
             .foregroundColor(.white.opacity(0.7))
         }
         .buttonStyle(.plain)
+        .focusable(false)
     }
 
     // MARK: - Subviews
@@ -227,7 +245,7 @@ struct AuthOverlayView: View {
     private var authFeedbackView: some View {
         switch authManager.authState {
         case .idle:
-            EmptyView()
+            Color.clear
         case .authenticating(let method):
             if method != .faceUnlock {
                 HStack(spacing: 8) {
@@ -278,6 +296,7 @@ struct AuthOverlayView: View {
                 Button(action: {
                     withAnimation {
                         showFallbacks = false
+                        isTimedOut = false
                         faceAuthStarted = true
                         authManager.authenticateWithFace { success in
                             if success {
@@ -303,7 +322,7 @@ struct AuthOverlayView: View {
                                 LinearGradient(
                                     colors: [
                                         Color(hue: 0.58, saturation: 0.5, brightness: 0.8).opacity(0.3),
-                                        Color(hue: 0.65, saturation: 0.4, brightness: 0.7).opacity(0.3),
+                                        Color(hue: 0.61, saturation: 0.6, brightness: 0.75).opacity(0.3),
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -317,6 +336,7 @@ struct AuthOverlayView: View {
                     .foregroundColor(.white.opacity(0.8))
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
             }
 
             // Touch ID button (if available).
@@ -341,6 +361,7 @@ struct AuthOverlayView: View {
                     .foregroundColor(.white)
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
             }
 
             // Password button.
@@ -364,6 +385,7 @@ struct AuthOverlayView: View {
                 .foregroundColor(.white.opacity(0.8))
             }
             .buttonStyle(.plain)
+            .focusable(false)
         }
         .frame(maxWidth: 280)
     }
@@ -376,6 +398,7 @@ struct AuthOverlayView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
                 .foregroundColor(.white)
+                .multilineTextAlignment(.leading)
                 .padding(12)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
@@ -408,35 +431,28 @@ struct AuthOverlayView: View {
                         .font(.system(size: 13, weight: .medium))
                         .frame(width: 80, height: 36)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.white.opacity(0.08))
+                            Capsule()
+                                .fill(Color.white.opacity(0.12))
                         )
                         .foregroundColor(.white.opacity(0.7))
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
 
                 // Unlock button.
                 Button(action: submitPassword) {
                     Text("Unlock")
                         .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 36)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(hue: 0.58, saturation: 0.6, brightness: 0.85),
-                                            Color(hue: 0.65, saturation: 0.5, brightness: 0.75),
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
+                            Capsule()
+                                .fill(Color.blue)
                         )
-                        .foregroundColor(.white)
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
                 .disabled(passwordInput.isEmpty)
             }
         }

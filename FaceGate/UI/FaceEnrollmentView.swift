@@ -20,7 +20,7 @@ struct FaceEnrollmentView: View {
                     .foregroundStyle(
                         LinearGradient(
                             colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                                     Color(hue: 0.72, saturation: 0.6, brightness: 0.90)],
+                                     Color(hue: 0.61, saturation: 0.75, brightness: 0.85)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -91,6 +91,9 @@ struct FaceEnrollmentView: View {
                 .padding(.bottom, 20)
         }
         .frame(width: 420, height: isInSettings ? 460 : 420)
+        .onAppear {
+            enrollmentManager.startEnrollment()
+        }
     }
 
     // MARK: - State Views
@@ -140,18 +143,14 @@ struct FaceEnrollmentView: View {
     private var actionButtons: some View {
         switch enrollmentManager.state {
         case .idle:
-            VStack(spacing: 10) {
-                primaryButton("Start Enrollment") {
-                    enrollmentManager.startEnrollment()
-                }
-                secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
-                    onComplete()
-                }
+            secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
+                onComplete()
             }
 
         case .capturing:
-            secondaryButton("Cancel") {
+            secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
                 enrollmentManager.cancelEnrollment()
+                onComplete()
             }
 
         case .processing:
@@ -180,21 +179,12 @@ struct FaceEnrollmentView: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: .semibold))
-                .frame(width: 200, height: 40)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hue: 0.58, saturation: 0.6, brightness: 0.85),
-                                    Color(hue: 0.65, saturation: 0.5, brightness: 0.75),
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                )
                 .foregroundColor(.white)
+                .frame(width: 200, height: 38)
+                .background(
+                    Capsule()
+                        .fill(Color.blue)
+                )
         }
         .buttonStyle(.plain)
     }

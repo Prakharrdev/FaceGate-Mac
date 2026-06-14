@@ -19,6 +19,7 @@ struct PasswordField: View {
             }
             .textFieldStyle(.plain)
             .font(.system(size: 14))
+            .multilineTextAlignment(.leading)
 
             if showToggle {
                 Button(action: { isSecure.toggle() }) {

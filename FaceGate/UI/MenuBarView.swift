@@ -14,6 +14,12 @@ struct MenuBarView: View {
 
     @Environment(\.openWindow) private var openWindow
 
+    private var sortedLockedApps: [LockedApp] {
+        lockedAppsManager.lockedApps.sorted {
+            $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header.
@@ -25,7 +31,7 @@ struct MenuBarView: View {
                     .foregroundStyle(
                         LinearGradient(
                             colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                                     Color(hue: 0.72, saturation: 0.6, brightness: 0.90)],
+                                     Color(hue: 0.61, saturation: 0.75, brightness: 0.85)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -53,6 +59,7 @@ struct MenuBarView: View {
 
             // Locked apps section.
             if lockedAppsManager.lockedApps.isEmpty {
+                Spacer()
                 VStack(spacing: 8) {
                     Image(systemName: "lock.open")
                         .font(.system(size: 20))
@@ -65,16 +72,19 @@ struct MenuBarView: View {
                         .foregroundColor(.secondary.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                Spacer()
             } else {
                 ScrollView {
                     VStack(spacing: 1) {
-                        ForEach(lockedAppsManager.lockedApps) { app in
-                            LockedAppRow(app: app, hasActiveSession: sessionManager.hasActiveSession(for: app.bundleIdentifier))
+                        ForEach(sortedLockedApps) { app in
+                            LockedAppRow(
+                                app: app,
+                                hasActiveSession: isTemporarilyDisabled || sessionManager.hasActiveSession(for: app.bundleIdentifier)
+                            )
                         }
                     }
                 }
-                .frame(maxHeight: 200)
+                .frame(maxHeight: .infinity)
             }
 
             Divider()
@@ -92,7 +102,7 @@ struct MenuBarView: View {
                 MenuButton(
                     icon: "lock.fill",
                     title: "Re-lock All Apps",
-                    action: { sessionManager.revokeAllSessions() }
+                    action: relockAllApps
                 )
 
                 Divider()
@@ -115,7 +125,7 @@ struct MenuBarView: View {
             }
             .padding(.vertical, 4)
         }
-        .frame(width: 280)
+        .frame(width: 280, height: 350)
         .onAppear {
             checkTemporaryDisable()
             // If setup was never finished, open the Setup Wizard immediately.
@@ -155,6 +165,7 @@ struct MenuBarView: View {
             UserDefaults.standard.removeObject(forKey: FGConstants.protectionDisableExpiryKey)
             isTemporarilyDisabled = false
             disableTimer?.invalidate()
+            sessionManager.revokeAllSessions()
         } else {
             // Disable for 5 minutes.
             let expiry = Date().addingTimeInterval(300)
@@ -166,6 +177,16 @@ struct MenuBarView: View {
         }
     }
 
+    private func relockAllApps() {
+        sessionManager.revokeAllSessions()
+        if isTemporarilyDisabled {
+            UserDefaults.standard.set(false, forKey: FGConstants.protectionDisabledKey)
+            UserDefaults.standard.removeObject(forKey: FGConstants.protectionDisableExpiryKey)
+            isTemporarilyDisabled = false
+            disableTimer?.invalidate()
+        }
+    }
+
     private func startDisableCountdown() {
         disableTimer?.invalidate()
         disableTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
@@ -174,6 +195,7 @@ struct MenuBarView: View {
                 isTemporarilyDisabled = false
                 UserDefaults.standard.set(false, forKey: FGConstants.protectionDisabledKey)
                 disableTimer?.invalidate()
+                sessionManager.revokeAllSessions()
             }
         }
     }
@@ -186,7 +208,14 @@ struct MenuBarView: View {
                 isTemporarilyDisabled = true
                 disableTimeRemaining = remaining
                 startDisableCountdown()
+            } else {
+                UserDefaults.standard.set(false, forKey: FGConstants.protectionDisabledKey)
+                UserDefaults.standard.removeObject(forKey: FGConstants.protectionDisableExpiryKey)
+                isTemporarilyDisabled = false
+                sessionManager.revokeAllSessions()
             }
+        } else {
+            isTemporarilyDisabled = false
         }
     }
 
@@ -214,24 +243,55 @@ private struct LockedAppRow: View {
 
             Spacer()
 
-            if hasActiveSession {
-                Text("Unlocked")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.green.opacity(0.8))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.green.opacity(0.15))
-                    )
-            } else {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(.orange.opacity(0.7))
-            }
+            LockToggleButton(bundleIdentifier: app.bundleIdentifier, hasActiveSession: hasActiveSession)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
+    }
+}
+
+private struct LockToggleButton: View {
+    let bundleIdentifier: String
+    let hasActiveSession: Bool
+    
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: {
+            if hasActiveSession {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    SessionManager.shared.revokeSession(for: bundleIdentifier)
+                }
+            }
+        }) {
+            Group {
+                if #available(macOS 14.0, *) {
+                    Image(systemName: hasActiveSession ? "lock.open.fill" : "lock.fill")
+                        .contentTransition(.symbolEffect(.replace))
+                } else {
+                    Image(systemName: hasActiveSession ? "lock.open.fill" : "lock.fill")
+                }
+            }
+            .font(.system(size: 13, weight: .medium))
+            .foregroundColor(hasActiveSession ? .green : .secondary)
+            .frame(width: 24, height: 24)
+            .background(
+                Circle()
+                    .fill(hasActiveSession && isHovered ? Color.green.opacity(0.12) : Color.clear)
+            )
+            .scaleEffect(isHovered && hasActiveSession ? 1.05 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .onHover { hovering in
+            if hasActiveSession {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    isHovered = hovering
+                }
+            } else {
+                isHovered = false
+            }
+        }
     }
 }
 
