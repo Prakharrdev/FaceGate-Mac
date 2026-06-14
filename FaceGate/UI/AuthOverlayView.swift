@@ -131,7 +131,7 @@ struct AuthOverlayView: View {
                             }
                         }
                         smallFallbackButton(icon: "key.fill", label: "Password") {
-                            withAnimation { showPasswordField = true }
+                            showPasswordAuth()
                         }
                     }
                     .padding(.top, 8)
@@ -140,7 +140,10 @@ struct AuthOverlayView: View {
                 Spacer()
 
                 // Cancel button at bottom.
-                Button(action: onCancel) {
+                Button(action: {
+                    authManager.stopFaceAuth()
+                    onCancel()
+                }) {
                     Text("Cancel & Close App")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.4))
@@ -185,6 +188,9 @@ struct AuthOverlayView: View {
                     authManager.stopFaceAuth()
                 }
             }
+        }
+        .onDisappear {
+            authManager.stopFaceAuth()
         }
     }
 
@@ -365,7 +371,7 @@ struct AuthOverlayView: View {
             }
 
             // Password button.
-            Button(action: { withAnimation { showPasswordField = true } }) {
+            Button(action: showPasswordAuth) {
                 HStack(spacing: 10) {
                     Image(systemName: "key.fill")
                         .font(.system(size: 16))
@@ -462,7 +468,15 @@ struct AuthOverlayView: View {
     // MARK: - Actions
 
     private func authenticateWithTouchID() {
+        authManager.stopFaceAuth()
         authManager.authenticateWithTouchID(appName: appName) { _ in }
+    }
+
+    private func showPasswordAuth() {
+        authManager.stopFaceAuth()
+        withAnimation {
+            showPasswordField = true
+        }
     }
 
     private func submitPassword() {
