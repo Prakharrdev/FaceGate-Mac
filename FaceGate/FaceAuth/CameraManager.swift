@@ -33,7 +33,10 @@ final class CameraManager: NSObject, ObservableObject {
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 DispatchQueue.main.async {
                     self?.permissionGranted = granted
-                    if !granted {
+                    if granted {
+                        self?.error = nil
+                        self?.startCapture()
+                    } else {
                         self?.error = .permissionDenied
                     }
                 }
@@ -108,6 +111,8 @@ final class CameraManager: NSObject, ObservableObject {
         if captureSession.inputs.isEmpty {
             configureSession()
         }
+
+        guard !captureSession.inputs.isEmpty else { return }
 
         processingQueue.async { [weak self] in
             self?.captureSession.startRunning()
