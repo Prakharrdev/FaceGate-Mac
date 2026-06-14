@@ -423,8 +423,8 @@ struct AuthOverlayView: View {
                         .font(.system(size: 13, weight: .medium))
                         .frame(width: 80, height: 36)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.white.opacity(0.08))
+                            Capsule()
+                                .fill(Color.white.opacity(0.12))
                         )
                         .foregroundColor(.white.opacity(0.7))
                 }
@@ -435,22 +435,13 @@ struct AuthOverlayView: View {
                 Button(action: submitPassword) {
                     Text("Unlock")
                         .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 36)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(hue: 0.58, saturation: 0.6, brightness: 0.85),
-                                            Color(hue: 0.61, saturation: 0.7, brightness: 0.80),
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
+                            Capsule()
+                                .fill(Color.blue)
                         )
-                        .foregroundColor(.white)
                 }
                 .buttonStyle(.plain)
                 .focusable(false)
