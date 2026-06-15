@@ -29,6 +29,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Register secret kill hotkey.
+        GlobalHotkeyManager.shared.registerShortcut()
+
         // Listen for "open settings" notifications from MenuBarView.
         NotificationCenter.default.addObserver(
             self,

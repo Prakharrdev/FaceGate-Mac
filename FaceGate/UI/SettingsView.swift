@@ -329,6 +329,13 @@ private struct BehaviorSettingsView: View {
     @AppStorage(FGConstants.launchAtLoginKey) private var launchAtLogin = false
     @State private var sessionTimeoutMinutes: Double = FGConstants.defaultSessionTimeout / 60
 
+    @AppStorage("emergencyKillModifier") private var emergencyKillModifier = "Command"
+    @AppStorage("emergencyKillKey") private var emergencyKillKey = "`"
+
+    private var shortcutModifierSymbol: String {
+        emergencyKillModifier == "Command" ? "⌘" : "⇧"
+    }
+
     var body: some View {
         Form {
             Section {
@@ -358,6 +365,60 @@ private struct BehaviorSettingsView: View {
                 }
             } header: {
                 Text("Locking")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Emergency Kill Shortcut")
+                        .font(.system(size: 13, weight: .semibold))
+                    
+                    HStack {
+                        Text("Compulsory modifiers:")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text("⌃ Control + ⌥ Option")
+                            .font(.system(size: 11, weight: .medium))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(nsColor: .controlBackgroundColor))
+                            .cornerRadius(4)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Picker("Third Modifier", selection: $emergencyKillModifier) {
+                            Text("⌘ Command").tag("Command")
+                            Text("⇧ Shift").tag("Shift")
+                        }
+                        .pickerStyle(.menu)
+                        .onChangeCompat(of: emergencyKillModifier) { _ in
+                            GlobalHotkeyManager.shared.reRegisterShortcut()
+                        }
+                        
+                        Picker("Key", selection: $emergencyKillKey) {
+                            Text("` (Backtick)").tag("`")
+                            Text("Escape").tag("Escape")
+                            Text("Space").tag("Space")
+                            Text("Q").tag("Q")
+                            Text("K").tag("K")
+                            Text("X").tag("X")
+                            Text("Delete").tag("Delete")
+                        }
+                        .pickerStyle(.menu)
+                        .onChangeCompat(of: emergencyKillKey) { _ in
+                            GlobalHotkeyManager.shared.reRegisterShortcut()
+                        }
+                    }
+                    
+                    Text("Current Shortcut: ⌃⌥\(shortcutModifierSymbol)\(emergencyKillKey)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.blue)
+                    
+                    Text("Pressing the shortcut above at any time will instantly quit FaceGate without requiring authentication.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            } header: {
+                Text("Emergency")
             }
         }
         .formStyle(.grouped)
