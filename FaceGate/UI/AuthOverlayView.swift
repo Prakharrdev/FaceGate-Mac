@@ -195,8 +195,14 @@ struct AuthOverlayView: View {
         }
         .onChangeCompat(of: showPasswordField) { newValue in
             if newValue {
+                NSApp.activate(ignoringOtherApps: true)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     isPasswordFocused = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if !isPasswordFocused {
+                        isPasswordFocused = true
+                    }
                 }
             }
         }
@@ -490,11 +496,17 @@ struct AuthOverlayView: View {
 
     private func showPasswordAuth() {
         authManager.stopFaceAuth()
+        NSApp.activate(ignoringOtherApps: true)
         withAnimation {
             showPasswordField = true
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             isPasswordFocused = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if !isPasswordFocused {
+                isPasswordFocused = true
+            }
         }
     }
 
