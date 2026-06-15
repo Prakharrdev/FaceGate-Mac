@@ -46,13 +46,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
+    var isAuthorizedToQuit = false
+
+    var isSettingsWindowVisible: Bool {
+        settingsWindow?.isVisible ?? false
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // Require authentication to quit if setup is complete and apps are locked.
+        // If settings window is open or we've pre-authorized, allow quitting without authentication.
+        if isAuthorizedToQuit || isSettingsWindowVisible {
+            cleanup()
+            return .terminateNow
+        }
+
         let setupDone = UserDefaults.standard.bool(forKey: FGConstants.setupCompletedKey)
         let hasLockedApps = !LockedAppsManager.shared.lockedApps.isEmpty
 
         if setupDone && hasLockedApps {
-            // Show auth dialog before quitting.
+            // Show auth dialog alert fallback for system-level quit signals.
             let alert = NSAlert()
             alert.messageText = "Authenticate to Quit"
             alert.informativeText = "FaceGate is protecting your apps. Enter your password to quit."
@@ -62,7 +73,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let response = alert.runModal()
             if response == .alertSecondButtonReturn {
-                // User confirmed quit.
                 cleanup()
                 return .terminateNow
             } else {
@@ -94,30 +104,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettingsWindow() {
         closeMenuBarWindow()
 
-        if let existing = settingsWindow {
-            existing.orderFrontRegardless()
-            existing.makeKeyAndOrderFront(nil)
+        ActionAuthWindow.show(reason: "FaceGate Settings") { [weak self] in
+            guard let self = self else { return }
+
+            if let existing = self.settingsWindow {
+                existing.orderFrontRegardless()
+                existing.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                return
+            }
+
+            let settingsView = SettingsView()
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 650, height: 450),
+                styleMask: [.titled, .closable, .resizable, .miniaturizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "FaceGate Settings"
+            window.contentView = NSHostingView(rootView: settingsView)
+            window.center()
+            window.isReleasedWhenClosed = false
+            
+            window.orderFrontRegardless()
+            window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
-            return
+
+            self.settingsWindow = window
         }
-
-        let settingsView = SettingsView()
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 650, height: 450),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "FaceGate Settings"
-        window.contentView = NSHostingView(rootView: settingsView)
-        window.center()
-        window.isReleasedWhenClosed = false
-        
-        window.orderFrontRegardless()
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-
-        settingsWindow = window
     }
 
     @objc private func openSetupWindow() {

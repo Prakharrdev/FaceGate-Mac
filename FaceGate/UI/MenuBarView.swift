@@ -113,12 +113,12 @@ struct MenuBarView: View {
                     action: { openSettings() }
                 )
 
-                // Quit (should require auth — simplified for Phase 1).
+                // Quit (requires auth unless settings is open).
                 MenuButton(
                     icon: "xmark.circle",
                     title: "Quit FaceGate",
                     isDestructive: true,
-                    action: { NSApplication.shared.terminate(nil) }
+                    action: { quitApplication() }
                 )
             }
             .padding(.vertical, 4)
@@ -166,12 +166,16 @@ struct MenuBarView: View {
             sessionManager.revokeAllSessions()
         } else {
             // Disable for 5 minutes.
-            let expiry = Date().addingTimeInterval(300)
-            UserDefaults.standard.set(true, forKey: FGConstants.protectionDisabledKey)
-            UserDefaults.standard.set(expiry, forKey: FGConstants.protectionDisableExpiryKey)
-            isTemporarilyDisabled = true
-            disableTimeRemaining = 300
-            startDisableCountdown()
+            ActionAuthWindow.show(reason: "Disable Protection") {
+                DispatchQueue.main.async {
+                    let expiry = Date().addingTimeInterval(300)
+                    UserDefaults.standard.set(true, forKey: FGConstants.protectionDisabledKey)
+                    UserDefaults.standard.set(expiry, forKey: FGConstants.protectionDisableExpiryKey)
+                    self.isTemporarilyDisabled = true
+                    self.disableTimeRemaining = 300
+                    self.startDisableCountdown()
+                }
+            }
         }
     }
 
@@ -220,6 +224,19 @@ struct MenuBarView: View {
     private func openSettings() {
         // Post a notification to open the settings window.
         NotificationCenter.default.post(name: .openSettings, object: nil)
+    }
+
+    private func quitApplication() {
+        let appDelegate = NSApplication.shared.delegate as? AppDelegate
+        let isSettingsOpen = appDelegate?.isSettingsWindowVisible ?? false
+        if isSettingsOpen {
+            NSApplication.shared.terminate(nil)
+        } else {
+            ActionAuthWindow.show(reason: "Quit FaceGate") {
+                appDelegate?.isAuthorizedToQuit = true
+                NSApplication.shared.terminate(nil)
+            }
+        }
     }
 }
 

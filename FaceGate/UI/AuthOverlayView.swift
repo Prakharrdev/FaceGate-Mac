@@ -7,6 +7,9 @@ import SwiftUI
 struct AuthOverlayView: View {
     let appName: String
     let appIcon: NSImage
+    var isAppLocking: Bool = true
+    var cancelButtonTitle: String = "Cancel & Close App"
+    var subtitleMessage: String? = nil
     let onAuthenticated: () -> Void
     let onCancel: () -> Void
 
@@ -70,7 +73,7 @@ struct AuthOverlayView: View {
                 }
 
                 // "App Name is Locked".
-                Text("\(appName) is Locked")
+                Text(isAppLocking ? "\(appName) is Locked" : appName)
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .padding(.bottom, 8)
@@ -83,14 +86,14 @@ struct AuthOverlayView: View {
                         .padding(.bottom, 24)
                 } else if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
                     Text(faceAuthManager.statusMessage.isEmpty
-                         ? "Authenticate to unlock this app"
+                         ? (subtitleMessage ?? (isAppLocking ? "Authenticate to unlock this app" : "Authenticate to proceed"))
                          : faceAuthManager.statusMessage)
                         .font(.system(size: 13, weight: .regular))
                         .foregroundColor(.white.opacity(0.6))
                         .padding(.bottom, 24)
                         .animation(.easeInOut(duration: 0.2), value: faceAuthManager.statusMessage)
                 } else {
-                    Text("Authenticate to unlock this app")
+                    Text(subtitleMessage ?? (isAppLocking ? "Authenticate to unlock this app" : "Authenticate to proceed"))
                         .font(.system(size: 13, weight: .regular))
                         .foregroundColor(.white.opacity(0.6))
                         .padding(.bottom, 24)
@@ -145,7 +148,7 @@ struct AuthOverlayView: View {
                     authManager.stopFaceAuth()
                     onCancel()
                 }) {
-                    Text("Cancel & Close App")
+                    Text(cancelButtonTitle)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.4))
                 }
