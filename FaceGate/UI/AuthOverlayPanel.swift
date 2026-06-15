@@ -21,7 +21,7 @@ final class AuthOverlayPanel: NSPanel {
     ) {
         super.init(
             contentRect: screen.frame,
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )

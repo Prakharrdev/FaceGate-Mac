@@ -13,6 +13,7 @@ struct AuthOverlayView: View {
     @StateObject private var authManager = AuthenticationManager.shared
     @ObservedObject private var faceAuthManager = AuthenticationManager.shared.faceAuthManager
     @State private var passwordInput: String = ""
+    @FocusState private var isPasswordFocused: Bool
     @State private var showPasswordField: Bool = false
     @State private var showFallbacks: Bool = false
     @State private var shakePassword: Bool = false
@@ -131,7 +132,7 @@ struct AuthOverlayView: View {
                             }
                         }
                         smallFallbackButton(icon: "key.fill", label: "Password") {
-                            withAnimation { showPasswordField = true }
+                            showPasswordAuth()
                         }
                     }
                     .padding(.top, 8)
@@ -140,7 +141,10 @@ struct AuthOverlayView: View {
                 Spacer()
 
                 // Cancel button at bottom.
-                Button(action: onCancel) {
+                Button(action: {
+                    authManager.stopFaceAuth()
+                    onCancel()
+                }) {
                     Text("Cancel & Close App")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.4))
@@ -183,6 +187,22 @@ struct AuthOverlayView: View {
                 withAnimation {
                     isTimedOut = true
                     authManager.stopFaceAuth()
+                }
+            }
+        }
+        .onDisappear {
+            authManager.stopFaceAuth()
+        }
+        .onChangeCompat(of: showPasswordField) { newValue in
+            if newValue {
+                NSApp.activate(ignoringOtherApps: true)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    isPasswordFocused = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if !isPasswordFocused {
+                        isPasswordFocused = true
+                    }
                 }
             }
         }
@@ -365,7 +385,7 @@ struct AuthOverlayView: View {
             }
 
             // Password button.
-            Button(action: { withAnimation { showPasswordField = true } }) {
+            Button(action: showPasswordAuth) {
                 HStack(spacing: 10) {
                     Image(systemName: "key.fill")
                         .font(.system(size: 16))
@@ -395,6 +415,7 @@ struct AuthOverlayView: View {
         VStack(spacing: 16) {
             // Password input field.
             SecureField("Enter password", text: $passwordInput)
+                .focused($isPasswordFocused)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
                 .foregroundColor(.white)
@@ -423,6 +444,7 @@ struct AuthOverlayView: View {
                 // Back button.
                 Button(action: {
                     withAnimation {
+                        showFallbacks = true
                         showPasswordField = false
                         passwordInput = ""
                     }
@@ -462,7 +484,30 @@ struct AuthOverlayView: View {
     // MARK: - Actions
 
     private func authenticateWithTouchID() {
-        authManager.authenticateWithTouchID(appName: appName) { _ in }
+        authManager.stopFaceAuth()
+        authManager.authenticateWithTouchID(appName: appName) { success in
+            if !success {
+                withAnimation {
+                    showFallbacks = true
+                }
+            }
+        }
+    }
+
+    private func showPasswordAuth() {
+        authManager.stopFaceAuth()
+        NSApp.activate(ignoringOtherApps: true)
+        withAnimation {
+            showPasswordField = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            isPasswordFocused = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if !isPasswordFocused {
+                isPasswordFocused = true
+            }
+        }
     }
 
     private func submitPassword() {

@@ -95,7 +95,11 @@ final class AppLocker: ObservableObject {
 
         let appName = LockedAppsManager.shared.displayName(for: bundleIdentifier) ?? "Application"
 
-        for screen in NSScreen.screens {
+        let screens = NSScreen.screens
+        let mouseLocation = NSEvent.mouseLocation
+        let activeScreen = screens.first { NSMouseInRect(mouseLocation, $0.frame, false) } ?? NSScreen.main ?? screens.first
+
+        for screen in screens {
             let panel = AuthOverlayPanel(
                 screen: screen,
                 appName: appName,
@@ -107,8 +111,15 @@ final class AppLocker: ObservableObject {
                     self?.terminateBlockedApp()
                 }
             )
-            panel.makeKeyAndOrderFront(nil)
+            if screen == activeScreen {
+                panel.makeKeyAndOrderFront(nil)
+            } else {
+                panel.orderFront(nil)
+            }
             overlayPanels.append(panel)
         }
+
+        // Activate FaceGate so it becomes the active app and can receive keyboard input.
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
