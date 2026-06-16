@@ -294,6 +294,7 @@ struct SetupView: View {
 
             setupButton("Start Protecting") {
                 UserDefaults.standard.set(true, forKey: FGConstants.setupCompletedKey)
+                UserDefaults.standard.set(true, forKey: FGConstants.touchIDEnabledKey)
                 UserDefaults.standard.set(true, forKey: FGConstants.launchAtLoginKey)
                 if #available(macOS 13.0, *) {
                     do {
