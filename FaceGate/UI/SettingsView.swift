@@ -363,8 +363,6 @@ private struct BehaviorSettingsView: View {
 
     @ObservedObject private var scheduleManager = AppScheduleManager.shared
 
-    @AppStorage(FGConstants.lockOnQuitGlobalKey) private var lockOnQuitGlobal = false
-
     private var shortcutModifierSymbol: String {
         emergencyKillModifier == "Command" ? "⌘" : "⇧"
     }
@@ -400,17 +398,6 @@ private struct BehaviorSettingsView: View {
                     Text("After unlocking an app, it stays unlocked for this duration before re-locking. Set to 0 to lock immediately after use.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
-
-                    Toggle(isOn: $lockOnQuitGlobal) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Lock apps on quit")
-                            Text("Apps will lock themselves whenever they quit, even if quit within the unlock timer window.")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .toggleStyle(.checkbox)
                 }
             } header: {
                 Text("Locking")
@@ -1185,7 +1172,6 @@ private struct LockedAppDetailView: View {
     
     @State private var hasCustomTimer = false
     @State private var customTimeoutMinutes: Double = 5
-    @State private var lockOnQuit = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -1290,22 +1276,6 @@ private struct LockedAppDetailView: View {
                                     .foregroundColor(.secondary)
                             }
                             .opacity(hasCustomTimer ? 1.0 : 0.5)
-
-                            Divider()
-
-                            Toggle(isOn: $lockOnQuit) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Lock this app on quit")
-                                    Text("The app will lock itself whenever it quits, even if quit within the unlock timer window.")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                            .toggleStyle(.checkbox)
-                            .onChangeCompat(of: lockOnQuit) { newValue in
-                                lockedAppsManager.updateLockOnQuit(for: app.bundleIdentifier, lockOnQuit: newValue)
-                            }
                         }
                         .padding(.vertical, 8)
                     }
@@ -1328,7 +1298,6 @@ private struct LockedAppDetailView: View {
                     let lastSelection = UserDefaults.standard.double(forKey: "lastCustomTimeout_\(app.bundleIdentifier)")
                     customTimeoutMinutes = lastSelection > 0 ? lastSelection : 5
                 }
-                lockOnQuit = activeApp.lockOnQuit
             }
         }
         .onChangeCompat(of: hasCustomTimer) { newValue in
