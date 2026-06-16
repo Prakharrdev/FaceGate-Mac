@@ -26,14 +26,14 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             List(SettingsTab.allCases, selection: $selectedTab) { tab in
                 Label(tab.rawValue, systemImage: tab.icon)
                     .tag(tab)
             }
             .listStyle(.sidebar)
             .frame(minWidth: 180)
-        } detail: {
+
             Group {
                 switch selectedTab {
                 case .lockedApps:
@@ -46,9 +46,9 @@ struct SettingsView: View {
                     AboutView()
                 }
             }
-            .frame(minWidth: 450, minHeight: 400)
+            .frame(minWidth: 450, minHeight: 520)
         }
-        .frame(minWidth: 650, minHeight: 450)
+        .frame(minWidth: 650, minHeight: 570)
     }
 }
 
@@ -703,6 +703,17 @@ private struct AboutView: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.orange.opacity(0.08))
             )
+
+            Link(destination: URL(string: "https://github.com/dweep-desai/FaceGate-Mac")!) {
+                HStack(spacing: 6) {
+                    Image("GitHubIcon")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 18, height: 18)
+                    Text("GitHub Repository")
+                        .font(.system(size: 12))
+                }
+            }
 
             VStack(spacing: 4) {
                 Text("Open Source — MIT License")
