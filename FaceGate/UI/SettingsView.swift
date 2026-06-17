@@ -574,7 +574,7 @@ private struct BehaviorSettingsView: View {
             }
 
             Section {
-                Toggle("App Deletion Protection", isOn: Binding(
+                Toggle("App Deletion Protection (highly recommended)", isOn: Binding(
                     get: { uninstallProtection },
                     set: { newValue in
                         guard newValue != uninstallProtection, !isUpdatingUninstallProtection else { return }
@@ -582,7 +582,7 @@ private struct BehaviorSettingsView: View {
                     }
                 ))
                 .disabled(isUpdatingUninstallProtection)
-                Text("Requires administrator authentication (Touch ID or password) to delete the FaceGate application.")
+                Text("Requires administrator authentication to toggle. This feature prevents direct deletion of FaceGate without turning this toggle off")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             } header: {
@@ -891,9 +891,17 @@ private struct BehaviorSettingsView: View {
         }
     }
 
+    private var protectionTargetPath: String {
+        let installedPath = "/Applications/FaceGate.app"
+        if FileManager.default.fileExists(atPath: installedPath) {
+            return installedPath
+        }
+        return Bundle.main.bundlePath
+    }
+
     private func getActualProtectionState() -> Bool {
-        let bundlePath = Bundle.main.bundlePath
-        let bundleURL = Bundle.main.bundleURL
+        let bundlePath = protectionTargetPath
+        let bundleURL = URL(fileURLWithPath: bundlePath)
         do {
             let attrs = try FileManager.default.attributesOfItem(atPath: bundlePath)
             let ownerName = attrs[.ownerAccountName] as? String
@@ -911,7 +919,7 @@ private struct BehaviorSettingsView: View {
         guard !isUpdatingUninstallProtection else { return }
         isUpdatingUninstallProtection = true
         
-        let bundlePath = Bundle.main.bundlePath
+        let bundlePath = protectionTargetPath
         let escapedPath = bundlePath.replacingOccurrences(of: "'", with: "'\\''")
         
         let command: String
@@ -927,29 +935,39 @@ private struct BehaviorSettingsView: View {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         process.arguments = ["-e", osascriptSource]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        let errorPipe = Pipe()
+        process.standardOutput = Pipe()
+        process.standardError = errorPipe
         
-        process.terminationHandler = { proc in
+        do {
+            try process.run()
+        } catch {
+            NSLog("[FaceGate] Failed to launch uninstall protection process: \(error)")
+            isUpdatingUninstallProtection = false
+            return
+        }
+        
+        // Wait on a background thread to keep the Process object alive until osascript exits.
+        DispatchQueue.global(qos: .userInitiated).async {
+            process.waitUntilExit()
+            let exitCode = process.terminationStatus
+            
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            
             DispatchQueue.main.async {
-                if proc.terminationStatus == 0 {
+                if exitCode == 0 {
                     UserDefaults.standard.set(enabled, forKey: FGConstants.uninstallProtectionKey)
                     self.uninstallProtection = enabled
                 } else {
-                    print("[FaceGate] Uninstall protection command failed with exit code: \(proc.terminationStatus)")
+                    NSLog("[FaceGate] Uninstall protection command failed (exit: \(exitCode)): \(errorMessage)")
                     self.uninstallProtection = self.getActualProtectionState()
                 }
                 self.isUpdatingUninstallProtection = false
             }
         }
-        
-        do {
-            try process.run()
-        } catch {
-            print("[FaceGate] Failed to launch uninstall protection process: \(error)")
-            isUpdatingUninstallProtection = false
-        }
     }
+    
 }
 
 // MARK: - About View
