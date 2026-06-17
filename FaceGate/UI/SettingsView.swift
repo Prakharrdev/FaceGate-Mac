@@ -574,10 +574,14 @@ private struct BehaviorSettingsView: View {
             }
 
             Section {
-                Toggle("App Deletion Protection", isOn: $uninstallProtection)
-                    .onChangeCompat(of: uninstallProtection) { newValue in
+                Toggle("App Deletion Protection", isOn: Binding(
+                    get: { uninstallProtection },
+                    set: { newValue in
+                        guard newValue != uninstallProtection, !isUpdatingUninstallProtection else { return }
                         setUninstallProtection(newValue)
                     }
+                ))
+                .disabled(isUpdatingUninstallProtection)
                 Text("Requires administrator authentication (Touch ID or password) to delete the FaceGate application.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -918,27 +922,32 @@ private struct BehaviorSettingsView: View {
             command = "chflags -R nouchg '\(escapedPath)' && chown -R \(username):staff '\(escapedPath)'"
         }
         
-        let scriptSource = "do shell script \"\(command)\" with administrator privileges"
+        let osascriptSource = "do shell script \"\(command)\" with administrator privileges"
         
-        DispatchQueue.global(qos: .userInitiated).async {
-            var error: NSDictionary?
-            if let appleScript = NSAppleScript(source: scriptSource) {
-                appleScript.executeAndReturnError(&error)
-            }
-            
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", osascriptSource]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        
+        process.terminationHandler = { proc in
             DispatchQueue.main.async {
-                if let err = error {
-                    print("[FaceGate] Failed to change uninstall protection: \(err)")
-                    self.uninstallProtection = self.getActualProtectionState()
-                } else {
+                if proc.terminationStatus == 0 {
                     UserDefaults.standard.set(enabled, forKey: FGConstants.uninstallProtectionKey)
                     self.uninstallProtection = enabled
+                } else {
+                    print("[FaceGate] Uninstall protection command failed with exit code: \(proc.terminationStatus)")
+                    self.uninstallProtection = self.getActualProtectionState()
                 }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.isUpdatingUninstallProtection = false
-                }
+                self.isUpdatingUninstallProtection = false
             }
+        }
+        
+        do {
+            try process.run()
+        } catch {
+            print("[FaceGate] Failed to launch uninstall protection process: \(error)")
+            isUpdatingUninstallProtection = false
         }
     }
 }
