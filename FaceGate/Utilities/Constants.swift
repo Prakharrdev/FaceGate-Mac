@@ -42,6 +42,9 @@ enum FGConstants {
     /// Key: whether to launch at login.
     static let launchAtLoginKey = "launchAtLogin"
 
+    /// Key: whether uninstall protection (immutable bundle) is enabled.
+    static let uninstallProtectionKey = "uninstallProtectionEnabled"
+
     /// Key: whether protection is temporarily disabled.
     static let protectionDisabledKey = "protectionTemporarilyDisabled"
 

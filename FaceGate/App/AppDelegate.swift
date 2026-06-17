@@ -41,6 +41,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Sync uninstall protection state on startup.
+        syncUninstallProtection()
+
         // Register secret kill hotkey.
         GlobalHotkeyManager.shared.registerShortcut()
 
@@ -260,6 +263,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func systemWillSleep() {
         guard UserDefaults.standard.bool(forKey: FGConstants.lockOnSleepKey) else { return }
         SessionManager.shared.revokeAllSessions()
+    }
+
+    private func syncUninstallProtection() {
+        let shouldProtect = UserDefaults.standard.bool(forKey: FGConstants.uninstallProtectionKey)
+        let bundleURL = Bundle.main.bundleURL
+        
+        do {
+            let resourceValues = try bundleURL.resourceValues(forKeys: [.isUserImmutableKey])
+            let currentImmutable = resourceValues.isUserImmutable ?? false
+            if currentImmutable != shouldProtect {
+                try? (bundleURL as NSURL).setResourceValue(shouldProtect, forKey: .isUserImmutableKey)
+                print("[FaceGate] Synced bundle immutable state to \(shouldProtect).")
+            }
+        } catch {
+            print("[FaceGate] Failed to sync uninstall protection on launch: \(error)")
+        }
     }
 }
 

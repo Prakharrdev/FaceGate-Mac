@@ -521,6 +521,7 @@ private struct BehaviorSettingsView: View {
     @AppStorage(FGConstants.launchAtLoginKey) private var launchAtLogin = false
     @AppStorage(FGConstants.lockOnSleepKey) private var lockOnSleep = false
     @State private var sessionTimeoutMinutes: Double = FGConstants.defaultSessionTimeout / 60
+    @State private var uninstallProtection = UserDefaults.standard.bool(forKey: FGConstants.uninstallProtectionKey)
 
     @AppStorage("emergencyKillModifier") private var emergencyKillModifier = "Command"
     @AppStorage("emergencyKillKey") private var emergencyKillKey = "`"
@@ -569,6 +570,18 @@ private struct BehaviorSettingsView: View {
                     }
             } header: {
                 Text("Startup")
+            }
+
+            Section {
+                Toggle("App Deletion Protection", isOn: $uninstallProtection)
+                    .onChangeCompat(of: uninstallProtection) { newValue in
+                        setUninstallProtection(newValue)
+                    }
+                Text("Requires administrator authentication (Touch ID or password) to delete the FaceGate application.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Uninstall Protection")
             }
 
             Section {
@@ -801,6 +814,11 @@ private struct BehaviorSettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .onAppear {
+            // Sync uninstall protection state
+            let currentStatus = getActualProtectionState()
+            uninstallProtection = currentStatus
+            UserDefaults.standard.set(currentStatus, forKey: FGConstants.uninstallProtectionKey)
+
             let storedTimeout = SessionManager.shared.sessionTimeout
             sessionTimeoutMinutes = storedTimeout == FGConstants.indefiniteSessionValue ? FGConstants.indefiniteSliderValue : storedTimeout / 60
 
@@ -864,6 +882,54 @@ private struct BehaviorSettingsView: View {
                 }
             } catch {
                 print("Failed to \(enabled ? "register" : "unregister") login item: \(error)")
+            }
+        }
+    }
+
+    private func getActualProtectionState() -> Bool {
+        let bundlePath = Bundle.main.bundlePath
+        let bundleURL = Bundle.main.bundleURL
+        do {
+            let attrs = try FileManager.default.attributesOfItem(atPath: bundlePath)
+            let ownerName = attrs[.ownerAccountName] as? String
+            
+            let resourceValues = try bundleURL.resourceValues(forKeys: [.isUserImmutableKey])
+            let isImmutable = resourceValues.isUserImmutable ?? false
+            
+            return ownerName == "root" || isImmutable
+        } catch {
+            return false
+        }
+    }
+
+    private func setUninstallProtection(_ enabled: Bool) {
+        let bundlePath = Bundle.main.bundlePath
+        let escapedPath = bundlePath.replacingOccurrences(of: "'", with: "'\\''")
+        
+        let command: String
+        if enabled {
+            command = "chown -R root:wheel '\(escapedPath)' && chflags -R uchg '\(escapedPath)'"
+        } else {
+            let username = NSUserName()
+            command = "chflags -R nouchg '\(escapedPath)' && chown -R \(username):staff '\(escapedPath)'"
+        }
+        
+        let scriptSource = "do shell script \"\(command)\" with administrator privileges"
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            var error: NSDictionary?
+            if let appleScript = NSAppleScript(source: scriptSource) {
+                appleScript.executeAndReturnError(&error)
+            }
+            
+            DispatchQueue.main.async {
+                if let err = error {
+                    print("[FaceGate] Failed to change uninstall protection: \(err)")
+                    self.uninstallProtection = self.getActualProtectionState()
+                } else {
+                    UserDefaults.standard.set(enabled, forKey: FGConstants.uninstallProtectionKey)
+                    self.uninstallProtection = enabled
+                }
             }
         }
     }
