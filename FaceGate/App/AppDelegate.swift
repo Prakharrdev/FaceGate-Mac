@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var settingsWindow: NSWindow?
     private var setupWindow: NSWindow?
+    private var settingsChromeState: SettingsChromeState?
+    private var settingsSidebarToggleTarget: SettingsSidebarToggleTarget?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Pre-load the Core ML face embedding model to avoid cold-start delay.
@@ -127,15 +129,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
 
-            let settingsView = SettingsView()
+            let chromeState = SettingsChromeState()
+            let settingsView = SettingsView(chromeState: chromeState)
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 650, height: 570),
-                styleMask: [.titled, .closable, .miniaturizable],
+                contentRect: NSRect(x: 0, y: 0, width: 920, height: 640),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
             window.title = "FaceGate Settings"
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.backgroundColor = .clear
+            window.isMovableByWindowBackground = true
+            window.minSize = NSSize(width: 850, height: 620)
             window.contentView = NSHostingView(rootView: settingsView)
+            installSettingsSidebarToggle(on: window, chromeState: chromeState)
             window.center()
             window.isReleasedWhenClosed = false
             
@@ -143,8 +152,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
 
+            self.settingsChromeState = chromeState
             self.settingsWindow = window
         }
+    }
+
+    private func installSettingsSidebarToggle(on window: NSWindow, chromeState: SettingsChromeState) {
+        let button = NSButton(frame: NSRect(x: 0, y: 0, width: 30, height: 30))
+        button.image = NSImage(systemSymbolName: "sidebar.leading", accessibilityDescription: "Toggle sidebar")
+        button.imagePosition = .imageOnly
+        button.bezelStyle = .rounded
+        button.isBordered = true
+        button.focusRingType = .none
+        button.toolTip = "Toggle sidebar"
+
+        let target = SettingsSidebarToggleTarget(chromeState: chromeState)
+        button.target = target
+        button.action = #selector(SettingsSidebarToggleTarget.toggleSidebar)
+        settingsSidebarToggleTarget = target
+
+        let accessory = NSTitlebarAccessoryViewController()
+        accessory.view = button
+        accessory.layoutAttribute = .left
+        window.addTitlebarAccessoryViewController(accessory)
     }
 
     @objc private func openSetupWindow() {
@@ -196,5 +226,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         setupWindow = window
+    }
+}
+
+private final class SettingsSidebarToggleTarget: NSObject {
+    private let chromeState: SettingsChromeState
+
+    init(chromeState: SettingsChromeState) {
+        self.chromeState = chromeState
+    }
+
+    @objc func toggleSidebar() {
+        chromeState.isSidebarCollapsed.toggle()
     }
 }

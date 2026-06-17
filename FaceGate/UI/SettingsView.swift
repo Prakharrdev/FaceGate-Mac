@@ -1,11 +1,21 @@
+import AppKit
 import ServiceManagement
 import SwiftUI
+
+final class SettingsChromeState: ObservableObject {
+    @Published var isSidebarCollapsed = false
+}
 
 /// The main settings window with tabbed navigation.
 struct SettingsView: View {
     @ObservedObject var lockedAppsManager = LockedAppsManager.shared
+    @ObservedObject var chromeState: SettingsChromeState
 
     @State private var selectedTab: SettingsTab = .lockedApps
+
+    init(chromeState: SettingsChromeState = SettingsChromeState()) {
+        self.chromeState = chromeState
+    }
 
     enum SettingsTab: String, CaseIterable, Identifiable {
         case lockedApps = "Locked Apps"
@@ -23,33 +33,215 @@ struct SettingsView: View {
             case .about: return "info.circle.fill"
             }
         }
+
+        var description: String {
+            switch self {
+            case .lockedApps: return "Choose which apps require authentication."
+            case .authentication: return "Tune Face Unlock, Touch ID, and password fallback."
+            case .behavior: return "Adjust launch, locking, schedules, and emergency controls."
+            case .about: return "Version, license, and project details."
+            }
+        }
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            List(SettingsTab.allCases, selection: $selectedTab) { tab in
-                Label(tab.rawValue, systemImage: tab.icon)
-                    .tag(tab)
-            }
-            .listStyle(.sidebar)
-            .frame(minWidth: 180)
+        ZStack(alignment: .topLeading) {
+            Color.codexWindowBackground
+                .ignoresSafeArea()
 
-            Group {
-                switch selectedTab {
-                case .lockedApps:
-                    LockedAppsSettingsView()
-                case .authentication:
-                    AuthSettingsView()
-                case .behavior:
-                    BehaviorSettingsView()
-                case .about:
-                    AboutView()
+            HStack(spacing: 0) {
+                if !chromeState.isSidebarCollapsed {
+                    CodexSettingsSidebar(selectedTab: $selectedTab)
+                        .frame(width: 292)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+
+                SettingsDetailPane(selectedTab: selectedTab)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .animation(.spring(response: 0.28, dampingFraction: 0.86), value: chromeState.isSidebarCollapsed)
+        }
+        .preferredColorScheme(.dark)
+        .frame(minWidth: 850, minHeight: 620)
+        .toolbar(.hidden)
+    }
+}
+
+private struct CodexSettingsSidebar: View {
+    @Binding var selectedTab: SettingsView.SettingsTab
+
+    var body: some View {
+        ZStack {
+            CodexSidebarVisualEffect(material: .sidebar, blendingMode: .behindWindow)
+
+            LinearGradient(
+                colors: [
+                    Color(red: 0.30, green: 0.32, blue: 0.42).opacity(0.36),
+                    Color(red: 0.12, green: 0.22, blue: 0.22).opacity(0.30),
+                    Color.black.opacity(0.08)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("FaceGate")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.92))
+                        Text("Settings")
+                            .font(.system(size: 12, weight: .medium))``
+                            .foregroundStyle(.white.opacity(0.48))
+                    }
+                }
+                .padding(.top, 34)
+                .padding(.horizontal, 18)
+                .padding(.bottom, 20)
+
+                Text("Preferences")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.38))
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 8)
+
+                VStack(spacing: 3) {
+                    ForEach(SettingsView.SettingsTab.allCases) { tab in
+                        CodexSidebarRow(
+                            tab: tab,
+                            isSelected: selectedTab == tab
+                        ) {
+                            selectedTab = tab
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+
+                Spacer()
+
+                HStack(spacing: 9) {
+                    Image(systemName: "sparkle.magnifyingglass")
+                        .font(.system(size: 13, weight: .medium))
+                    Text("Protected locally")
+                        .font(.system(size: 12, weight: .medium))
+                    Spacer()
+                }
+                .foregroundStyle(.white.opacity(0.54))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 16)
+            }
+        }
+        .overlay(alignment: .trailing) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(width: 1)
+        }
+    }
+}
+
+private struct CodexSidebarRow: View {
+    let tab: SettingsView.SettingsTab
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 11) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 15, weight: .medium))
+                    .frame(width: 22)
+                    .symbolRenderingMode(.hierarchical)
+
+                Text(tab.rawValue)
+                    .font(.system(size: 14, weight: .medium))
+                    .lineLimit(1)
+
+                Spacer()
+            }
+            .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.70))
+            .padding(.horizontal, 9)
+            .frame(height: 38)
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(Color.white.opacity(0.11))
                 }
             }
-            .frame(minWidth: 450, minHeight: 520)
+            .contentShape(RoundedRectangle(cornerRadius: 7))
         }
-        .frame(minWidth: 650, minHeight: 570)
+        .buttonStyle(.plain)
+        .focusable(false)
     }
+}
+
+private struct SettingsDetailPane: View {
+    let selectedTab: SettingsView.SettingsTab
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(selectedTab.rawValue)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.94))
+                    Text(selectedTab.description)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white.opacity(0.48))
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 30)
+            .padding(.top, 34)
+            .padding(.bottom, 18)
+
+            Divider()
+                .overlay(Color.white.opacity(0.07))
+
+            selectedContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.codexWindowBackground)
+        }
+        .background(Color.codexWindowBackground)
+    }
+
+    @ViewBuilder
+    private var selectedContent: some View {
+        switch selectedTab {
+        case .lockedApps:
+            LockedAppsSettingsView()
+        case .authentication:
+            AuthSettingsView()
+        case .behavior:
+            BehaviorSettingsView()
+        case .about:
+            AboutView()
+        }
+    }
+}
+
+private struct CodexSidebarVisualEffect: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        view.isEmphasized = false
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+    }
+}
+
+private extension Color {
+    static let codexWindowBackground = Color(red: 0.075, green: 0.075, blue: 0.073)
 }
 
 // MARK: - Auth Settings
