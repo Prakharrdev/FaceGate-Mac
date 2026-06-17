@@ -582,7 +582,7 @@ private struct BehaviorSettingsView: View {
                     }
                 ))
                 .disabled(isUpdatingUninstallProtection)
-                Text("Requires administrator authentication to toggle. This feature prevents direct deletion of FaceGate without turning this toggle off")
+                Text("Changing this setting requires administrator authentication. When enabled, FaceGate is protected from deletion to safeguard your locked applications.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             } header: {
@@ -930,38 +930,20 @@ private struct BehaviorSettingsView: View {
             command = "chflags -R nouchg '\(escapedPath)' && chown -R \(username):staff '\(escapedPath)'"
         }
         
-        let osascriptSource = "do shell script \"\(command)\" with administrator privileges"
+        let source = "do shell script \"\(command)\" with administrator privileges with prompt \"FaceGate wants to make changes.\""
         
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-e", osascriptSource]
-        let errorPipe = Pipe()
-        process.standardOutput = Pipe()
-        process.standardError = errorPipe
-        
-        do {
-            try process.run()
-        } catch {
-            NSLog("[FaceGate] Failed to launch uninstall protection process: \(error)")
-            isUpdatingUninstallProtection = false
-            return
-        }
-        
-        // Wait on a background thread to keep the Process object alive until osascript exits.
         DispatchQueue.global(qos: .userInitiated).async {
-            process.waitUntilExit()
-            let exitCode = process.terminationStatus
-            
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            var error: NSDictionary?
+            let script = NSAppleScript(source: source)
+            let result = script?.executeAndReturnError(&error)
             
             DispatchQueue.main.async {
-                if exitCode == 0 {
+                if let error = error {
+                    NSLog("[FaceGate] Uninstall protection failed: \(error)")
+                    self.uninstallProtection = self.getActualProtectionState()
+                } else {
                     UserDefaults.standard.set(enabled, forKey: FGConstants.uninstallProtectionKey)
                     self.uninstallProtection = enabled
-                } else {
-                    NSLog("[FaceGate] Uninstall protection command failed (exit: \(exitCode)): \(errorMessage)")
-                    self.uninstallProtection = self.getActualProtectionState()
                 }
                 self.isUpdatingUninstallProtection = false
             }
