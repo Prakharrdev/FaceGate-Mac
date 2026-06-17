@@ -32,12 +32,18 @@ final class SessionManager: ObservableObject {
     /// Record that an app has been successfully unlocked.
     /// The session will expire after `sessionTimeout` seconds, or the app's custom timeout if configured.
     /// A duration of 0 (lock immediately) skips session creation — the app locks on next activation.
+    /// A duration of -1 (indefinite) creates a session that never expires.
     func createSession(for bundleIdentifier: String) {
         var duration = sessionTimeout
         
         if let app = LockedAppsManager.shared.lockedApps.first(where: { $0.bundleIdentifier == bundleIdentifier }),
            let customTimeout = app.customSessionTimeout {
             duration = customTimeout
+        }
+        
+        if duration == FGConstants.indefiniteSessionValue {
+            activeSessions[bundleIdentifier] = .distantFuture
+            return
         }
         
         guard duration > 0 else { return }
@@ -72,7 +78,11 @@ final class SessionManager: ObservableObject {
     /// Applies the change to all existing sessions immediately.
     func setSessionTimeout(_ timeout: TimeInterval) {
         UserDefaults.standard.set(timeout, forKey: FGConstants.sessionTimeoutKey)
-        if timeout <= 0 {
+        if timeout == FGConstants.indefiniteSessionValue {
+            for (bundleId, _) in activeSessions {
+                activeSessions[bundleId] = .distantFuture
+            }
+        } else if timeout <= 0 {
             revokeAllSessions()
         } else {
             let newExpiry = Date().addingTimeInterval(timeout)

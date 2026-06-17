@@ -106,6 +106,12 @@ enum FGConstants {
     /// Default session timeout: 5 minutes (seconds).
     static let defaultSessionTimeout: TimeInterval = 300
 
+    /// Sentinel value stored for "Keep Unlocked Indefinitely" mode.
+    static let indefiniteSessionValue: TimeInterval = -1
+
+    /// Slider value representing "Keep Unlocked Indefinitely".
+    static let indefiniteSliderValue: Double = 31
+
     /// Maximum failed auth attempts before lockout.
     static let maxFailedAttempts = 5
 

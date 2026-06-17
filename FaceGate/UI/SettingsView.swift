@@ -91,7 +91,7 @@ private struct CodexSettingsSidebar: View {
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.92))
                         Text("Settings")
-                            .font(.system(size: 12, weight: .medium))``
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.white.opacity(0.48))
                     }
                 }
@@ -575,7 +575,10 @@ private struct BehaviorSettingsView: View {
                     HStack {
                         Text("Session Timeout")
                         Spacer()
-                        if sessionTimeoutMinutes == 0 {
+                        if sessionTimeoutMinutes == FGConstants.indefiniteSliderValue {
+                            Text("Keep Unlocked Indefinitely")
+                                .foregroundColor(.secondary)
+                        } else if sessionTimeoutMinutes == 0 {
                             Text("Lock Immediately")
                                 .foregroundColor(.secondary)
                         } else {
@@ -583,11 +586,12 @@ private struct BehaviorSettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    Slider(value: $sessionTimeoutMinutes, in: 0...30, step: 1)
+                    Slider(value: $sessionTimeoutMinutes, in: 0...FGConstants.indefiniteSliderValue, step: 1)
                         .onChangeCompat(of: sessionTimeoutMinutes) { newValue in
-                            SessionManager.shared.setSessionTimeout(newValue * 60)
+                            let timeout: TimeInterval = newValue == FGConstants.indefiniteSliderValue ? FGConstants.indefiniteSessionValue : newValue * 60
+                            SessionManager.shared.setSessionTimeout(timeout)
                         }
-                    Text("After unlocking an app, it stays unlocked for this duration before re-locking. Set to 0 to lock immediately after use.")
+                    Text("After unlocking an app, it stays unlocked for this duration before re-locking. Set to 0 to lock immediately after use, or set to 31 to keep unlocked until you manually lock from the menu bar.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -784,7 +788,8 @@ private struct BehaviorSettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .onAppear {
-            sessionTimeoutMinutes = SessionManager.shared.sessionTimeout / 60
+            let storedTimeout = SessionManager.shared.sessionTimeout
+            sessionTimeoutMinutes = storedTimeout == FGConstants.indefiniteSessionValue ? FGConstants.indefiniteSliderValue : storedTimeout / 60
 
             let calendar = Calendar.current
             let now = Date()
@@ -1455,7 +1460,11 @@ private struct LockedAppDetailView: View {
                                 Spacer()
                                 
                                 if hasCustomTimer {
-                                    if customTimeoutMinutes == 0 {
+                                    if customTimeoutMinutes == FGConstants.indefiniteSliderValue {
+                                        Text("Keep Unlocked Indefinitely")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    } else if customTimeoutMinutes == 0 {
                                         Text("Lock Immediately")
                                             .font(.system(size: 12, weight: .semibold))
                                             .foregroundColor(.blue)
@@ -1479,10 +1488,10 @@ private struct LockedAppDetailView: View {
                             }
                             
                             HStack(spacing: 12) {
-                                Slider(value: $customTimeoutMinutes, in: 0...30, step: 1)
+                                Slider(value: $customTimeoutMinutes, in: 0...FGConstants.indefiniteSliderValue, step: 1)
                                     .disabled(!hasCustomTimer)
                                 
-                                Text("0-30m")
+                                Text("0-31m")
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                             }
@@ -1502,7 +1511,7 @@ private struct LockedAppDetailView: View {
             if let activeApp = lockedAppsManager.lockedApps.first(where: { $0.bundleIdentifier == app.bundleIdentifier }) {
                 if let custom = activeApp.customSessionTimeout {
                     hasCustomTimer = true
-                    customTimeoutMinutes = custom / 60
+                    customTimeoutMinutes = custom == FGConstants.indefiniteSessionValue ? FGConstants.indefiniteSliderValue : custom / 60
                 } else {
                     hasCustomTimer = false
                     // Restore last selection from UserDefaults if available, otherwise default to 5
@@ -1520,7 +1529,7 @@ private struct LockedAppDetailView: View {
     }
     
     private func saveChanges(hasCustom: Bool, minutes: Double) {
-        let timeout: TimeInterval? = hasCustom ? (minutes * 60) : nil
+        let timeout: TimeInterval? = hasCustom ? (minutes == FGConstants.indefiniteSliderValue ? FGConstants.indefiniteSessionValue : minutes * 60) : nil
         lockedAppsManager.updateCustomSessionTimeout(for: app.bundleIdentifier, timeout: timeout)
         if hasCustom {
             UserDefaults.standard.set(minutes, forKey: "lastCustomTimeout_\(app.bundleIdentifier)")
