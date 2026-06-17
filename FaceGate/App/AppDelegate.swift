@@ -126,6 +126,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppLocker.shared.dismissOverlays()
         AppMonitor.shared.stopMonitoring()
         AuthenticationManager.shared.stopFaceAuth()
+        UserDefaults.standard.set(false, forKey: FGConstants.protectionDisabledKey)
+        UserDefaults.standard.removeObject(forKey: FGConstants.protectionDisableExpiryKey)
     }
 
     // MARK: - Settings Window
