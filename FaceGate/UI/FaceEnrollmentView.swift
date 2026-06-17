@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 /// Face enrollment UI view with camera preview, face guide, and progress tracking.
@@ -10,6 +11,8 @@ struct FaceEnrollmentView: View {
 
     /// Whether this is shown in settings (allows cancel) vs onboarding (allows skip).
     var isInSettings: Bool = false
+
+    @State private var cameraAuthorization: AVAuthorizationStatus = .notDetermined
 
     private var staticStatusMessage: String {
         switch enrollmentManager.state {
@@ -65,9 +68,11 @@ struct FaceEnrollmentView: View {
             .animation(.easeInOut(duration: 0.25), value: enrollmentManager.warningMessage)
             .padding(.bottom, 6)
 
-            // Camera preview with face guide.
+            // Camera preview or permission-denied state.
             ZStack {
-                if enrollmentManager.state == .capturing || enrollmentManager.state == .idle {
+                if cameraAuthorization == .denied || cameraAuthorization == .restricted {
+                    cameraDeniedView
+                } else if enrollmentManager.state == .capturing || enrollmentManager.state == .idle {
                     CameraPreviewView(captureSession: enrollmentManager.camera.captureSession)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
 
@@ -97,18 +102,6 @@ struct FaceEnrollmentView: View {
                     .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
             )
 
-            // Dynamic Step/Instruction text below the video box
-            if enrollmentManager.state == .capturing || enrollmentManager.state == .idle {
-                Text(enrollmentManager.statusMessage)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.white.opacity(0.12)))
-                    .padding(.top, 10)
-                    .multilineTextAlignment(.center)
-            }
-
             // Progress bar.
             if enrollmentManager.state == .capturing {
                 VStack(spacing: 6) {
@@ -135,7 +128,64 @@ struct FaceEnrollmentView: View {
         }
         .frame(width: 420, height: isInSettings ? 530 : 490)
         .onAppear {
+            checkCameraAndStart()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            checkCameraAndStart()
+        }
+    }
+
+    // MARK: - Camera Permission
+
+    private func checkCameraAndStart() {
+        cameraAuthorization = AVCaptureDevice.authorizationStatus(for: .video)
+        switch cameraAuthorization {
+        case .authorized:
             enrollmentManager.startEnrollment()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak enrollmentManager] granted in
+                DispatchQueue.main.async {
+                    guard granted, let manager = enrollmentManager else { return }
+                    manager.camera.permissionGranted = true
+                    manager.startEnrollment()
+                }
+            }
+        case .denied, .restricted:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    // MARK: - Camera Denied View
+
+    private var cameraDeniedView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "camera.fill.badge.exclamationmark")
+                .font(.system(size: 36))
+                .foregroundColor(.red.opacity(0.8))
+
+            Text("Camera Access Denied")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+
+            Text("FaceGate needs camera access to enroll your face. Please enable it in System Settings.")
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+
+            Button {
+                CameraManager.openSystemSettings()
+            } label: {
+                Text("Open System Settings")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.blue))
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -184,38 +234,44 @@ struct FaceEnrollmentView: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        switch enrollmentManager.state {
-        case .idle:
-            secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
+        if cameraAuthorization == .denied || cameraAuthorization == .restricted {
+            secondaryButton(isInSettings ? "Cancel" : "Skip") {
                 onComplete()
             }
-
-        case .capturing:
-            VStack(spacing: 8) {
-                primaryButton("Recapture") {
-                    enrollmentManager.startEnrollment()
-                }
+        } else {
+            switch enrollmentManager.state {
+            case .idle:
                 secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
-                    enrollmentManager.cancelEnrollment()
                     onComplete()
                 }
-            }
 
-        case .processing:
-            EmptyView()
-
-        case .success:
-            primaryButton("Continue") {
-                onComplete()
-            }
-
-        case .failed:
-            VStack(spacing: 10) {
-                primaryButton("Try Again") {
-                    enrollmentManager.startEnrollment()
+            case .capturing:
+                VStack(spacing: 8) {
+                    primaryButton("Recapture") {
+                        enrollmentManager.startEnrollment()
+                    }
+                    secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
+                        enrollmentManager.cancelEnrollment()
+                        onComplete()
+                    }
                 }
-                secondaryButton(isInSettings ? "Cancel" : "Skip") {
+
+            case .processing:
+                EmptyView()
+
+            case .success:
+                primaryButton("Continue") {
                     onComplete()
+                }
+
+            case .failed:
+                VStack(spacing: 10) {
+                    primaryButton("Try Again") {
+                        enrollmentManager.startEnrollment()
+                    }
+                    secondaryButton(isInSettings ? "Cancel" : "Skip") {
+                        onComplete()
+                    }
                 }
             }
         }

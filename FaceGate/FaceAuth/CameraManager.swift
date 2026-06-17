@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import CoreGraphics
 import Foundation
@@ -24,16 +25,18 @@ final class CameraManager: NSObject, ObservableObject {
 
     override init() {
         super.init()
-        checkPermission()
     }
 
     // MARK: - Permission
 
     func checkPermission() {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        switch status {
         case .authorized:
             permissionGranted = true
+            error = nil
         case .notDetermined:
+            error = nil
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 DispatchQueue.main.async {
                     self?.permissionGranted = granted
@@ -51,6 +54,17 @@ final class CameraManager: NSObject, ObservableObject {
         @unknown default:
             permissionGranted = false
         }
+    }
+
+    /// Returns the current camera authorization status without side effects.
+    var authorizationStatus: AVAuthorizationStatus {
+        AVCaptureDevice.authorizationStatus(for: .video)
+    }
+
+    /// Opens System Settings → Privacy & Security → Camera.
+    static func openSystemSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")!
+        NSWorkspace.shared.open(url)
     }
 
     // MARK: - Session Setup
