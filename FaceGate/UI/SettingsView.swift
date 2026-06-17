@@ -1100,6 +1100,9 @@ struct LockedAppsSettingsView: View {
             .onAppear {
                 loadAppsIfNeeded()
             }
+            .onDisappear {
+                installedApps = []
+            }
             .navigationDestination(for: LockedApp.self) { app in
                 LockedAppDetailView(app: app, path: $path)
             }

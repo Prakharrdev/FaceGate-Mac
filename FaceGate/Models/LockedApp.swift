@@ -42,12 +42,22 @@ struct LockedApp: Codable, Identifiable, Hashable {
         customSessionTimeout = try container.decodeIfPresent(TimeInterval.self, forKey: .customSessionTimeout)
     }
 
+    private static let iconCache = NSCache<NSString, NSImage>()
+
     /// Convenience: get the NSImage icon from stored data.
     var icon: NSImage? {
-        if let iconData = iconData {
-            return NSImage(data: iconData)
+        guard let iconData = iconData else { return nil }
+        let key = bundleIdentifier as NSString
+        if let cached = Self.iconCache.object(forKey: key) {
+            return cached
         }
-        return nil
+        guard let image = NSImage(data: iconData) else { return nil }
+        Self.iconCache.setObject(image, forKey: key)
+        return image
+    }
+
+    static func clearIconCache() {
+        iconCache.removeAllObjects()
     }
 
     func hash(into hasher: inout Hasher) {

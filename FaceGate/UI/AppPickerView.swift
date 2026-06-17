@@ -86,6 +86,9 @@ struct AppPickerView: View {
         .onAppear {
             loadApps()
         }
+        .onDisappear {
+            installedApps = []
+        }
     }
 
     // MARK: - Private

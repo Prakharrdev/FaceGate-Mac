@@ -48,6 +48,7 @@ final class LockedAppsManager: ObservableObject {
         lockedApps.removeAll { $0.bundleIdentifier == bundleIdentifier }
         saveLockedApps()
         AppScheduleManager.shared.clearOverride(for: bundleIdentifier)
+        LockedApp.clearIconCache()
     }
 
     /// Toggle an app's lock state.
