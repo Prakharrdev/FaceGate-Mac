@@ -61,13 +61,6 @@ struct FaceEnrollmentView: View {
                     .multilineTextAlignment(.center)
                     .frame(height: 20)
 
-                if enrollmentManager.warningMessage.contains("Poor lighting") {
-                    Text("Tip: Try turning on Edge Lighting to improve face recognition")
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
             }
             .animation(.easeInOut(duration: 0.25), value: enrollmentManager.warningMessage)
             .padding(.bottom, 6)

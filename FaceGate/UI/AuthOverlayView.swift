@@ -85,13 +85,6 @@ struct AuthOverlayView: View {
                         .multilineTextAlignment(.center)
                         .frame(height: 20)
 
-                    if faceAuthManager.warningMessage.contains("Poor lighting") {
-                        Text("Tip: Try turning on Edge Lighting to improve face recognition")
-                            .font(.system(size: 10, weight: .regular))
-                            .foregroundColor(.white.opacity(0.45))
-                            .multilineTextAlignment(.center)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
                 }
                 .animation(.easeInOut(duration: 0.25), value: faceAuthManager.warningMessage)
                 .padding(.bottom, 8)

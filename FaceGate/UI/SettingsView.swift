@@ -988,7 +988,16 @@ struct LockedAppsSettingsView: View {
                     } else if filteredLockedApps.isEmpty {
                         noSearchResultsView
                     } else {
-                        lockedAppsList
+                        VStack(spacing: 0) {
+                            Text("Click an app to customize its session timer")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 8)
+                                .padding(.bottom, 2)
+                            lockedAppsList
+                        }
+                        .padding(.horizontal, 16)
                     }
                 }
             }
