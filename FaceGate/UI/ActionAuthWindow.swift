@@ -63,6 +63,7 @@ final class ActionAuthWindow: NSPanel {
         self.backgroundColor = .clear
         self.hasShadow = true
         self.isReleasedWhenClosed = false
+        self.hidesOnDeactivate = false
         self.collectionBehavior = [.canJoinAllSpaces]
         self.isMovable = true
         self.isMovableByWindowBackground = true

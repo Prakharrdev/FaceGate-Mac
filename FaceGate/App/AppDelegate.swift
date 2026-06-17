@@ -67,6 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow?.isVisible ?? false
     }
 
+
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // If settings window is open or we've pre-authorized, allow quitting without authentication.
         if isAuthorizedToQuit || isSettingsWindowVisible {
@@ -144,6 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.isMovableByWindowBackground = true
             window.minSize = NSSize(width: 850, height: 620)
             window.contentView = NSHostingView(rootView: settingsView)
+            window.level = .floating
             installSettingsSidebarToggle(on: window, chromeState: chromeState)
             window.center()
             window.isReleasedWhenClosed = false
@@ -217,6 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.title = "FaceGate Setup"
+        window.level = .floating
         window.contentView = NSHostingView(rootView: setupView)
         window.center()
         window.isReleasedWhenClosed = false
