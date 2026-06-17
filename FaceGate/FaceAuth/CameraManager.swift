@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreGraphics
 import Foundation
 
 /// Manages the camera capture session for face authentication and enrollment.
@@ -17,6 +18,9 @@ final class CameraManager: NSObject, ObservableObject {
 
     private let videoOutput = AVCaptureVideoDataOutput()
     private let processingQueue = DispatchQueue(label: "com.facegate.camera", qos: .userInitiated)
+
+    /// Brightness level captured just before the camera turns on, restored when it stops.
+    private var savedBrightness: Float? = nil
 
     override init() {
         super.init()
@@ -122,6 +126,9 @@ final class CameraManager: NSObject, ObservableObject {
 
         guard !captureSession.inputs.isEmpty else { return }
 
+        DispatchQueue.main.async { [weak self] in
+            self?.saveBrightnessAndMaximize()
+        }
         processingQueue.async { [weak self] in
             self?.captureSession.startRunning()
             DispatchQueue.main.async {
@@ -137,6 +144,7 @@ final class CameraManager: NSObject, ObservableObject {
             self?.captureSession.stopRunning()
             DispatchQueue.main.async {
                 self?.isRunning = false
+                self?.restoreBrightness()
             }
         }
     }
@@ -148,6 +156,47 @@ final class CameraManager: NSObject, ObservableObject {
             AVCaptureDevice.centerStageControlMode = .cooperative
         }
         AVCaptureDevice.isCenterStageEnabled = true
+    }
+
+    // MARK: - Brightness Management (via DisplayServices private framework)
+
+    /// Typealias for DisplayServicesGetBrightness(displayID, &brightness) -> Int32
+    private typealias DSGetBrightness = @convention(c) (UInt32, UnsafeMutablePointer<Float>) -> Int32
+    /// Typealias for DisplayServicesSetBrightness(displayID, brightness) -> Int32
+    private typealias DSSetBrightness = @convention(c) (UInt32, Float) -> Int32
+
+    /// Saves the current display brightness and sets it to 1.0 (maximum).
+    /// Uses the DisplayServices private framework which works on Apple Silicon.
+    private func saveBrightnessAndMaximize() {
+        guard let handle = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW) else { return }
+        defer { dlclose(handle) }
+
+        guard let getSym = dlsym(handle, "DisplayServicesGetBrightness"),
+              let setSym = dlsym(handle, "DisplayServicesSetBrightness") else { return }
+
+        let getBrightness = unsafeBitCast(getSym, to: DSGetBrightness.self)
+        let setBrightness = unsafeBitCast(setSym, to: DSSetBrightness.self)
+
+        let displayID = CGMainDisplayID()
+        var current: Float = 0
+        guard getBrightness(displayID, &current) == 0 else { return }
+
+        savedBrightness = current
+        _ = setBrightness(displayID, 1.0)
+    }
+
+    /// Restores the brightness that was saved in `saveBrightnessAndMaximize()`.
+    private func restoreBrightness() {
+        guard let saved = savedBrightness else { return }
+        savedBrightness = nil
+
+        guard let handle = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW) else { return }
+        defer { dlclose(handle) }
+
+        guard let setSym = dlsym(handle, "DisplayServicesSetBrightness") else { return }
+        let setBrightness = unsafeBitCast(setSym, to: DSSetBrightness.self)
+
+        _ = setBrightness(CGMainDisplayID(), saved)
     }
 
     // MARK: - Errors
