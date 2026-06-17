@@ -1534,5 +1534,7 @@ private struct LockedAppDetailView: View {
         if hasCustom {
             UserDefaults.standard.set(minutes, forKey: "lastCustomTimeout_\(app.bundleIdentifier)")
         }
+        // Revoke existing session so the new timeout takes effect immediately.
+        SessionManager.shared.revokeSession(for: app.bundleIdentifier)
     }
 }
