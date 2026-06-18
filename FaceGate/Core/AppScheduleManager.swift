@@ -26,6 +26,9 @@ final class AppScheduleManager: ObservableObject {
     private var wasInLockWindow = false
     private var wasInUnlockWindow = false
 
+    /// Whether the lock and unlock windows currently overlap at any point.
+    @Published private(set) var lockUnlockWindowsOverlap = false
+
     private init() {
         let defaults = UserDefaults.standard
 
@@ -69,6 +72,11 @@ final class AppScheduleManager: ObservableObject {
         userOverrides.keys.contains(bundleID)
     }
 
+    /// Force an immediate schedule re-evaluation (e.g. after time changes in Settings).
+    func refresh() {
+        evaluateSchedules()
+    }
+
     // MARK: - Timer
 
     private func startTimer() {
@@ -85,6 +93,8 @@ final class AppScheduleManager: ObservableObject {
 
     private func evaluateSchedules() {
         let now = Date()
+        lockUnlockWindowsOverlap = windowsOverlap()
+
         let inLockWindow = lockScheduleEnabled && isInWindow(
             startHour: lockStartHour, startMinute: lockStartMinute,
             endHour: lockEndHour, endMinute: lockEndMinute,
@@ -100,7 +110,9 @@ final class AppScheduleManager: ObservableObject {
             applyLockSchedule()
         }
 
-        if inUnlockWindow {
+        // Prevent overlap: unlock only fires when lock is NOT active.
+        // Lock wins — security-first.
+        if inUnlockWindow && !inLockWindow {
             applyUnlockSchedule()
         }
 
@@ -115,7 +127,7 @@ final class AppScheduleManager: ObservableObject {
         }
 
         wasInLockWindow = inLockWindow
-        wasInUnlockWindow = inUnlockWindow
+        wasInUnlockWindow = inUnlockWindow && !inLockWindow
     }
 
     private func applyLockSchedule() {
@@ -129,6 +141,38 @@ final class AppScheduleManager: ObservableObject {
         for app in LockedAppsManager.shared.lockedApps {
             if userOverrides[app.bundleIdentifier] == true { continue }
             SessionManager.shared.createSession(for: app.bundleIdentifier)
+        }
+    }
+
+    /// Returns true if the lock and unlock time windows overlap at any point.
+    private func windowsOverlap() -> Bool {
+        guard lockScheduleEnabled && unlockScheduleEnabled else { return false }
+        // Check any point in the lock window falls within the unlock window (or vice versa)
+        return timeInWindow(
+            startHour: lockStartHour, startMinute: lockStartMinute,
+            endHour: lockEndHour, endMinute: lockEndMinute,
+            checkHour: unlockStartHour, checkMinute: unlockStartMinute
+        ) || timeInWindow(
+            startHour: lockStartHour, startMinute: lockStartMinute,
+            endHour: lockEndHour, endMinute: lockEndMinute,
+            checkHour: unlockEndHour, checkMinute: unlockEndMinute
+        ) || timeInWindow(
+            startHour: unlockStartHour, startMinute: unlockStartMinute,
+            endHour: unlockEndHour, endMinute: unlockEndMinute,
+            checkHour: lockStartHour, checkMinute: lockStartMinute
+        )
+    }
+
+    /// Checks whether a specific time (checkHour:checkMinute) falls within a window.
+    private func timeInWindow(startHour: Int, startMinute: Int, endHour: Int, endMinute: Int, checkHour: Int, checkMinute: Int) -> Bool {
+        let checkTotal = checkHour * 60 + checkMinute
+        let startTotal = startHour * 60 + startMinute
+        let endTotal = endHour * 60 + endMinute
+
+        if startTotal <= endTotal {
+            return checkTotal >= startTotal && checkTotal < endTotal
+        } else {
+            return checkTotal >= startTotal || checkTotal < endTotal
         }
     }
 

@@ -18,6 +18,10 @@ final class FaceDataStore {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let data = try encoder.encode(enrollment)
+
+        // Ensure the parent directory exists before writing.
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+
         try crypto.encryptToFile(data, at: fileURL)
 
         // Update UserDefaults metadata.

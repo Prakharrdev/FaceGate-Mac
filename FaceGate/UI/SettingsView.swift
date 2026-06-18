@@ -636,6 +636,7 @@ private struct BehaviorSettingsView: View {
                         .toggleStyle(.checkbox)
                         .onChangeCompat(of: lockScheduleEnabled) { newValue in
                             scheduleManager.lockScheduleEnabled = newValue
+                            scheduleManager.refresh()
                         }
 
                     HStack(spacing: 4) {
@@ -650,6 +651,7 @@ private struct BehaviorSettingsView: View {
                                 lockStartMinute = comps.minute ?? 0
                                 scheduleManager.lockStartHour = lockStartHour
                                 scheduleManager.lockStartMinute = lockStartMinute
+                                scheduleManager.refresh()
                             }
 
                         Text("and")
@@ -663,6 +665,7 @@ private struct BehaviorSettingsView: View {
                                 lockEndMinute = comps.minute ?? 0
                                 scheduleManager.lockEndHour = lockEndHour
                                 scheduleManager.lockEndMinute = lockEndMinute
+                                scheduleManager.refresh()
                             }
                     }
                     .disabled(!lockScheduleEnabled)
@@ -674,6 +677,18 @@ private struct BehaviorSettingsView: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
+
+                if scheduleManager.lockUnlockWindowsOverlap {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 12))
+                        Text("Lock and unlock windows overlap. Lock takes priority — unlock will be skipped during the overlap.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.vertical, 4)
+                }
             }
 
             Section {
@@ -682,6 +697,7 @@ private struct BehaviorSettingsView: View {
                         .toggleStyle(.checkbox)
                         .onChangeCompat(of: unlockScheduleEnabled) { newValue in
                             scheduleManager.unlockScheduleEnabled = newValue
+                            scheduleManager.refresh()
                         }
 
                     HStack(spacing: 4) {
@@ -696,6 +712,7 @@ private struct BehaviorSettingsView: View {
                                 unlockStartMinute = comps.minute ?? 0
                                 scheduleManager.unlockStartHour = unlockStartHour
                                 scheduleManager.unlockStartMinute = unlockStartMinute
+                                scheduleManager.refresh()
                             }
 
                         Text("and")
@@ -709,6 +726,7 @@ private struct BehaviorSettingsView: View {
                                 unlockEndMinute = comps.minute ?? 0
                                 scheduleManager.unlockEndHour = unlockEndHour
                                 scheduleManager.unlockEndMinute = unlockEndMinute
+                                scheduleManager.refresh()
                             }
                     }
                     .disabled(!unlockScheduleEnabled)
@@ -719,6 +737,18 @@ private struct BehaviorSettingsView: View {
                     Text("All locked apps will be automatically unlocked during these hours. Manually locked apps are not affected.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
+                }
+
+                if scheduleManager.lockUnlockWindowsOverlap {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 12))
+                        Text("Lock and unlock windows overlap. Lock takes priority — unlock will be skipped during the overlap.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.vertical, 4)
                 }
             }
 
