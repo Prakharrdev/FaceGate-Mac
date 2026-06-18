@@ -904,6 +904,8 @@ private struct BehaviorSettingsView: View {
             if let endDate = calendar.date(from: unlockEndComponents) {
                 unlockEndTime = endDate
             }
+
+            scheduleManager.refresh()
         }
     }
 

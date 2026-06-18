@@ -25,6 +25,7 @@ final class AppScheduleManager: ObservableObject {
     private var timer: Timer?
     private var wasInLockWindow = false
     private var wasInUnlockWindow = false
+    private var cancellables = Set<AnyCancellable>()
 
     /// Whether the lock and unlock windows currently overlap at any point.
     @Published private(set) var lockUnlockWindowsOverlap = false
@@ -48,6 +49,25 @@ final class AppScheduleManager: ObservableObject {
            let overrides = try? JSONDecoder().decode([String: Bool].self, from: data) {
             userOverrides = overrides
         }
+
+        // Auto-recalculate overlap whenever any schedule property changes.
+        Publishers.MergeMany(
+            $lockScheduleEnabled.map { _ in },
+            $lockStartHour.map { _ in },
+            $lockStartMinute.map { _ in },
+            $lockEndHour.map { _ in },
+            $lockEndMinute.map { _ in },
+            $unlockScheduleEnabled.map { _ in },
+            $unlockStartHour.map { _ in },
+            $unlockStartMinute.map { _ in },
+            $unlockEndHour.map { _ in },
+            $unlockEndMinute.map { _ in }
+        )
+        .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
+        .sink { [weak self] _ in
+            self?.lockUnlockWindowsOverlap = self?.windowsOverlap() ?? false
+        }
+        .store(in: &cancellables)
 
         startTimer()
     }
