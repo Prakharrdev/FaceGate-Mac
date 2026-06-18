@@ -905,6 +905,19 @@ private struct BehaviorSettingsView: View {
                 unlockEndTime = endDate
             }
 
+            // Sync local AppStorage settings to scheduleManager on appear
+            scheduleManager.lockScheduleEnabled = lockScheduleEnabled
+            scheduleManager.lockStartHour = lockStartHour
+            scheduleManager.lockStartMinute = lockStartMinute
+            scheduleManager.lockEndHour = lockEndHour
+            scheduleManager.lockEndMinute = lockEndMinute
+
+            scheduleManager.unlockScheduleEnabled = unlockScheduleEnabled
+            scheduleManager.unlockStartHour = unlockStartHour
+            scheduleManager.unlockStartMinute = unlockStartMinute
+            scheduleManager.unlockEndHour = unlockEndHour
+            scheduleManager.unlockEndMinute = unlockEndMinute
+
             scheduleManager.refresh()
         }
     }

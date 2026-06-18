@@ -34,15 +34,15 @@ final class AppScheduleManager: ObservableObject {
         let defaults = UserDefaults.standard
 
         lockScheduleEnabled = defaults.bool(forKey: FGConstants.lockAllScheduleEnabledKey)
-        lockStartHour = defaults.integer(forKey: FGConstants.lockAllStartHourKey)
+        lockStartHour = defaults.object(forKey: FGConstants.lockAllStartHourKey) != nil ? defaults.integer(forKey: FGConstants.lockAllStartHourKey) : 22
         lockStartMinute = defaults.integer(forKey: FGConstants.lockAllStartMinuteKey)
-        lockEndHour = defaults.integer(forKey: FGConstants.lockAllEndHourKey)
+        lockEndHour = defaults.object(forKey: FGConstants.lockAllEndHourKey) != nil ? defaults.integer(forKey: FGConstants.lockAllEndHourKey) : 7
         lockEndMinute = defaults.integer(forKey: FGConstants.lockAllEndMinuteKey)
 
         unlockScheduleEnabled = defaults.bool(forKey: FGConstants.unlockAllScheduleEnabledKey)
-        unlockStartHour = defaults.integer(forKey: FGConstants.unlockAllStartHourKey)
+        unlockStartHour = defaults.object(forKey: FGConstants.unlockAllStartHourKey) != nil ? defaults.integer(forKey: FGConstants.unlockAllStartHourKey) : 7
         unlockStartMinute = defaults.integer(forKey: FGConstants.unlockAllStartMinuteKey)
-        unlockEndHour = defaults.integer(forKey: FGConstants.unlockAllEndHourKey)
+        unlockEndHour = defaults.object(forKey: FGConstants.unlockAllEndHourKey) != nil ? defaults.integer(forKey: FGConstants.unlockAllEndHourKey) : 22
         unlockEndMinute = defaults.integer(forKey: FGConstants.unlockAllEndMinuteKey)
 
         if let data = defaults.data(forKey: FGConstants.userOverrideTimestampsKey),
@@ -51,23 +51,25 @@ final class AppScheduleManager: ObservableObject {
         }
 
         // Auto-recalculate overlap whenever any schedule property changes.
-        Publishers.MergeMany(
-            $lockScheduleEnabled.map { _ in },
-            $lockStartHour.map { _ in },
-            $lockStartMinute.map { _ in },
-            $lockEndHour.map { _ in },
-            $lockEndMinute.map { _ in },
-            $unlockScheduleEnabled.map { _ in },
-            $unlockStartHour.map { _ in },
-            $unlockStartMinute.map { _ in },
-            $unlockEndHour.map { _ in },
-            $unlockEndMinute.map { _ in }
-        )
-        .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
-        .sink { [weak self] _ in
-            self?.lockUnlockWindowsOverlap = self?.windowsOverlap() ?? false
-        }
-        .store(in: &cancellables)
+        let publishers: [AnyPublisher<Void, Never>] = [
+            $lockScheduleEnabled.map { _ in }.eraseToAnyPublisher(),
+            $lockStartHour.map { _ in }.eraseToAnyPublisher(),
+            $lockStartMinute.map { _ in }.eraseToAnyPublisher(),
+            $lockEndHour.map { _ in }.eraseToAnyPublisher(),
+            $lockEndMinute.map { _ in }.eraseToAnyPublisher(),
+            $unlockScheduleEnabled.map { _ in }.eraseToAnyPublisher(),
+            $unlockStartHour.map { _ in }.eraseToAnyPublisher(),
+            $unlockStartMinute.map { _ in }.eraseToAnyPublisher(),
+            $unlockEndHour.map { _ in }.eraseToAnyPublisher(),
+            $unlockEndMinute.map { _ in }.eraseToAnyPublisher()
+        ]
+
+        Publishers.MergeMany(publishers)
+            .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.lockUnlockWindowsOverlap = self?.windowsOverlap() ?? false
+            }
+            .store(in: &cancellables)
 
         startTimer()
     }
@@ -167,20 +169,32 @@ final class AppScheduleManager: ObservableObject {
     /// Returns true if the lock and unlock time windows overlap at any point.
     private func windowsOverlap() -> Bool {
         guard lockScheduleEnabled && unlockScheduleEnabled else { return false }
-        // Check any point in the lock window falls within the unlock window (or vice versa)
-        return timeInWindow(
-            startHour: lockStartHour, startMinute: lockStartMinute,
-            endHour: lockEndHour, endMinute: lockEndMinute,
-            checkHour: unlockStartHour, checkMinute: unlockStartMinute
-        ) || timeInWindow(
-            startHour: lockStartHour, startMinute: lockStartMinute,
-            endHour: lockEndHour, endMinute: lockEndMinute,
-            checkHour: unlockEndHour, checkMinute: unlockEndMinute
-        ) || timeInWindow(
-            startHour: unlockStartHour, startMinute: unlockStartMinute,
-            endHour: unlockEndHour, endMinute: unlockEndMinute,
-            checkHour: lockStartHour, checkMinute: lockStartMinute
-        )
+        
+        let lockStart = lockStartHour * 60 + lockStartMinute
+        let lockEnd = lockEndHour * 60 + lockEndMinute
+        let unlockStart = unlockStartHour * 60 + unlockStartMinute
+        let unlockEnd = unlockEndHour * 60 + unlockEndMinute
+        
+        // If either window is empty, there is no overlap
+        if lockStart == lockEnd || unlockStart == unlockEnd {
+            return false
+        }
+        
+        func inWindow(start: Int, end: Int, m: Int) -> Bool {
+            if start < end {
+                return m >= start && m < end
+            } else {
+                return m >= start || m < end
+            }
+        }
+        
+        for m in 0..<1440 {
+            if inWindow(start: lockStart, end: lockEnd, m: m) &&
+               inWindow(start: unlockStart, end: unlockEnd, m: m) {
+                return true
+            }
+        }
+        return false
     }
 
     /// Checks whether a specific time (checkHour:checkMinute) falls within a window.
