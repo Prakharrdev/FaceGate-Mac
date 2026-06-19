@@ -46,6 +46,11 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 - **Secure Operations** — Require authentication to quit the application or configure settings to prevent unauthorized tampering.
 - **Emergency Kill Hotkey** — Global keyboard shortcut to instantly terminate.
 - **Menu Bar Agent** — Runs silently in the menu bar — no Dock icon, no distractions.
+<br>
+
+## Demo
+
+<video src="https://github.com/user-attachments/assets/faf3f058-8868-4b76-a880-5b66b208e583" width="100%" controls></video>
 
 <br>
 
