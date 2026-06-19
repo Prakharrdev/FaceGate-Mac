@@ -60,22 +60,26 @@ brew install --cask --no-quarantine dweep-desai/tap/facegate
 
 `--no-quarantine` is required because FaceGate is not Apple-notarized (due to a lack of developer funds). This flag prevents Gatekeeper from blocking the app on first launch.
 
-### Or download & install automatically
+### Or download & install automatically (handles quarantine too)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dweep-desai/FaceGate-Mac/main/install.sh | bash
 ```
 
-The script fetches the latest DMG from GitHub Releases, installs it to `/Applications`, and removes the quarantine flag.
+The script fetches the latest DMG from GitHub Releases, installs it to `/Applications`, and removes the quarantine flag — no manual steps needed.
 
 ### Manual Install
 
 > [!IMPORTANT]
-> FaceGate is not Apple-notarized, so simply double-clicking the app will not open it. Follow the steps below.
+> FaceGate is not Apple-notarized, so Gatekeeper will block it on first launch. Follow the steps below.
 
 1. Download the latest `.dmg` from the [Releases](https://github.com/dweep-desai/FaceGate-Mac/releases) page.
 2. Mount the volume and drag `FaceGate.app` to `/Applications`.
-3. Right-click `FaceGate.app`, select **Open**, and acknowledge the Gatekeeper warning.
+3. Open Terminal and run:
+   ```bash
+   xattr -cr /Applications/FaceGate.app
+   ```
+4. Right-click `FaceGate.app`, select **Open**, and click **Open** in the dialog.
 
 ---
 
