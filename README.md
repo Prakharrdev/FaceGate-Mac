@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://facegate-applocker.vercel.app/" target="_blank" rel="noopener noreferrer">
-    <img src="non-app-assets/website.svg" alt="Website" height="13" />
+    <img src="non-app-assets/website.svg" alt="Website" height="16" />
   </a>
 </p>
 
