@@ -63,6 +63,10 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 
 ## Installation - Give the repo a ⭐️ so you don't miss future updates.
 
+<p align="center">
+  <a href="https://youtu.be/ZBuUl4wp9y0?si=JsenxBQgYtuoPlyb" target="_blank" rel="noopener noreferrer"><strong>▶ Watch the installation video</strong></a>
+</p>
+
 ### -Recommended: Automatic Install
 
 ```bash
@@ -93,6 +97,7 @@ brew install --cask dweep-desai/tap/facegate
 > ```bash
 > xattr -cr /Applications/FaceGate.app
 > ```
+
 <br>
 
 ## Security & Privacy
