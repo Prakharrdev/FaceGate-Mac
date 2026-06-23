@@ -5,6 +5,24 @@
     <description>Most recent changes to FaceGate.</description>
     <language>en</language>
     <item>
+      <title>Version 1.0.1</title>
+      <description><![CDATA[
+        <ul>
+          <li>Fix: 'Disable Face Unlock during certain hours' now works when toggled on mid-window</li>
+          <li>Fix: FaceAuthManager correctly falls back to default hours when UserDefaults keys are missing</li>
+        </ul>
+      ]]></description>
+      <pubDate>Mon, 23 Jun 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://github.com/dweep-desai/FaceGate-Mac/releases/download/v1.0.1/FaceGate-1.0.1.dmg"
+        sparkle:version="2"
+        sparkle:shortVersionString="1.0.1"
+        sparkle:edDSASignature="j766R5qMkkS5qmONSe9pIYuLRTjKOtuc3E3Zfje6MHwNWgNnm18WnrZWvPS+hgN24iMdU3iltqshtYc+HWg5Dw=="
+        length="11027511"
+        type="application/octet-stream" />
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+    </item>
+    <item>
       <title>Version 1.0.0</title>
       <description><![CDATA[
         <ul>
