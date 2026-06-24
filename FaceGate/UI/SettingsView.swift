@@ -1085,6 +1085,18 @@ private struct AboutView: View {
                 }
             }
 
+            Link(destination: URL(string: "https://github.com/sponsors/dweep-desai")!) {
+                HStack(spacing: 6) {
+                    Image(systemName: "heart.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 14, height: 14)
+                        .foregroundColor(.pink)
+                    Text("Sponsor on GitHub")
+                        .font(.system(size: 12))
+                }
+            }
+
             VStack(spacing: 4) {
                 Text("Open Source — MIT License")
                     .font(.system(size: 11))
