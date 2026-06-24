@@ -5,6 +5,25 @@
     <description>Most recent changes to FaceGate.</description>
     <language>en</language>
     <item>
+      <title>Version 1.1.0</title>
+      <description><![CDATA[
+        <ul>
+          <li>New: Camera picker — choose between built-in and external USB cameras</li>
+          <li>New: External camera auto-detection with user override</li>
+          <li>Fix: About page now shows correct version from bundle</li>
+        </ul>
+      ]]></description>
+      <pubDate>Wed, 24 Jun 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://github.com/dweep-desai/FaceGate-Mac/releases/download/v1.1.0/FaceGate-1.1.0.dmg"
+        sparkle:version="3"
+        sparkle:shortVersionString="1.1.0"
+        sparkle:edSignature="NBkMtGwJ+AriGoWaNz68w7NomdL8dn8Uje1Yv2SdE0PWcZKPv8jgXdjM/0sHnUWjAZMI+0eqfgw4O00B0GVHCQ=="
+        length="11045781"
+        type="application/octet-stream" />
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+    </item>
+    <item>
       <title>Version 1.0.1</title>
       <description><![CDATA[
         <ul>
