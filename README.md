@@ -26,7 +26,7 @@
 </p>
 
 
-FaceGate is a native macOS utility that brings app-level locking with FaceUnlock to your Mac. Lock sensitive applications behind FaceUnlock, Touch ID, or a secure password — all processed entirely on-device with zero telemetry.
+FaceGate is a native macOS open-source applocker that brings FaceUnlock to your Mac. Lock sensitive applications behind FaceUnlock, Touch ID, or a secure password — all processed entirely on-device with zero telemetry.
 
 macOS natively lacks the ability to restrict individual applications. Although other App-lockers exist, none of them use face recognition and are not as feature rich as FaceGate. 
 
