@@ -828,8 +828,10 @@ private struct BehaviorSettingsView: View {
                         Text("Emergency Kill Shortcut")
                             .font(.system(size: 13, weight: .semibold))
                         Spacer()
-                        Toggle("", isOn: $emergencyKillEnabled)
+                        Toggle(isOn: $emergencyKillEnabled) { EmptyView() }
                             .toggleStyle(.switch)
+                            .labelsHidden()
+                            .accessibilityLabel("Enable Emergency Kill Shortcut")
                             .onChangeCompat(of: emergencyKillEnabled) { _ in
                                 GlobalHotkeyManager.shared.reRegisterShortcut()
                             }
