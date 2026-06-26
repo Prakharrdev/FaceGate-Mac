@@ -51,7 +51,8 @@ final class GlobalHotkeyManager {
             hotKeyRef = nil
         }
         
-        let isEnabled = UserDefaults.standard.object(forKey: FGConstants.emergencyKillEnabledKey) as? Bool ?? true
+        let defaults = UserDefaults.standard
+        let isEnabled = defaults.object(forKey: FGConstants.emergencyKillEnabledKey) == nil || defaults.bool(forKey: FGConstants.emergencyKillEnabledKey)
         guard isEnabled else { return }
         
         let modifierStr = UserDefaults.standard.string(forKey: FGConstants.emergencyKillModifierKey) ?? "Command"
