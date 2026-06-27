@@ -976,6 +976,11 @@ private struct BehaviorSettingsView: View {
 
             scheduleManager.refresh()
         }
+        .onChangeCompat(of: sessionTimerFromFocus) { _ in
+            for bundleId in SessionManager.shared.activeSessions.keys {
+                SessionManager.shared.refreshSessionForTimerMode(bundleId)
+            }
+        }
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
@@ -1791,6 +1796,7 @@ private struct LockedAppDetailView: View {
             default: fromFocus = nil
             }
             lockedAppsManager.updateTimerFromFocus(for: app.bundleIdentifier, fromFocus: fromFocus)
+            SessionManager.shared.refreshSessionForTimerMode(app.bundleIdentifier)
         }
     }
     

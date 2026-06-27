@@ -90,19 +90,30 @@ final class SessionManager: ObservableObject {
     /// the session expiry so the timer resets on each return.
     func appDidFocus(_ bundleIdentifier: String) {
         guard timerFromFocus(for: bundleIdentifier),
-              let lostAt = appFocusLostAt[bundleIdentifier],
               let duration = sessionDurations[bundleIdentifier],
               duration > 0, duration != FGConstants.indefiniteSessionValue else { return }
 
-        let outOfFocus = Date().timeIntervalSince(lostAt)
-        appFocusLostAt.removeValue(forKey: bundleIdentifier)
-
-        if outOfFocus > duration {
-            revokeSession(for: bundleIdentifier)
-        } else {
-            let newExpiry = Date().addingTimeInterval(duration)
-            activeSessions[bundleIdentifier] = newExpiry
+        if let lostAt = appFocusLostAt[bundleIdentifier] {
+            let outOfFocus = Date().timeIntervalSince(lostAt)
+            appFocusLostAt.removeValue(forKey: bundleIdentifier)
+            if outOfFocus > duration {
+                revokeSession(for: bundleIdentifier)
+                return
+            }
         }
+
+        // Extend the wall-clock expiry so the session doesn't expire while the app is in focus.
+        activeSessions[bundleIdentifier] = Date().addingTimeInterval(duration)
+    }
+
+    /// Called when the timer mode is changed mid-session (globally or per-app).
+    /// Extends the session expiry so the new mode takes effect immediately.
+    func refreshSessionForTimerMode(_ bundleIdentifier: String) {
+        guard timerFromFocus(for: bundleIdentifier),
+              activeSessions[bundleIdentifier] != nil,
+              let duration = sessionDurations[bundleIdentifier],
+              duration > 0, duration != FGConstants.indefiniteSessionValue else { return }
+        activeSessions[bundleIdentifier] = Date().addingTimeInterval(duration)
     }
 
     /// Called when an app loses focus. For "from focus" mode, records the time
