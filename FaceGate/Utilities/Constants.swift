@@ -39,6 +39,9 @@ enum FGConstants {
     /// Key: session timeout in seconds.
     static let sessionTimeoutKey = "sessionTimeout"
 
+    /// Key: whether session timer counts from last focus (vs last unlock).
+    static let sessionTimerFromFocusKey = "sessionTimerFromFocus"
+
     /// Key: whether to launch at login.
     static let launchAtLoginKey = "launchAtLogin"
 
