@@ -30,10 +30,39 @@ final class CameraManager: NSObject, ObservableObject {
     }
 
     /// Brightness level captured just before the camera turns on, restored when it stops.
-    private var savedBrightness: Float? = nil
+    /// Access is protected by `stateLock` to prevent data races.
+    private var _savedBrightness: Float? = nil
+    private var savedBrightness: Float? {
+        get {
+            stateLock.lock()
+            defer { stateLock.unlock() }
+            return _savedBrightness
+        }
+        set {
+            stateLock.lock()
+            defer { stateLock.unlock() }
+            _savedBrightness = newValue
+        }
+    }
 
     /// Tracks whether the capture session should currently be running to serialize commands on the processingQueue.
-    private var shouldBeRunning = false
+    /// Access is protected by `stateLock` to prevent data races.
+    private var _shouldBeRunning = false
+    private var shouldBeRunning: Bool {
+        get {
+            stateLock.lock()
+            defer { stateLock.unlock() }
+            return _shouldBeRunning
+        }
+        set {
+            stateLock.lock()
+            defer { stateLock.unlock() }
+            _shouldBeRunning = newValue
+        }
+    }
+
+    /// Lock to serialize access to shouldBeRunning and savedBrightness.
+    private let stateLock = NSLock()
 
     override init() {
         super.init()
@@ -187,9 +216,12 @@ final class CameraManager: NSObject, ObservableObject {
                 }
                 guard !self.captureSession.inputs.isEmpty else { return }
 
-                DispatchQueue.main.async { [weak self] in
+                // Synchronously capture and maximize brightness on the main thread
+                // before startRunning() to avoid race conditions.
+                DispatchQueue.main.sync { [weak self] in
                     self?.saveBrightnessAndMaximize()
                 }
+
                 self.captureSession.startRunning()
                 DispatchQueue.main.async { [weak self] in
                     self?.isRunning = true
@@ -201,22 +233,16 @@ final class CameraManager: NSObject, ObservableObject {
     func stopCapture() {
         shouldBeRunning = false
 
-        // Capture brightness value before the async block so it survives even if
-        // `self` is deallocated before the block executes (the previous [weak self]
-        // pattern silently dropped the restore when the object was released).
-        let brightnessToRestore = savedBrightness
-        savedBrightness = nil
-
         processingQueue.async { [weak self] in
             guard let self = self else { return }
             if self.captureSession.isRunning {
                 self.captureSession.stopRunning()
-                DispatchQueue.main.async { [weak self] in
-                    self?.isRunning = false
-                    if let brightness = brightnessToRestore {
-                        CameraManager.setBrightness(brightness)
-                    }
-                }
+            }
+            // Restore brightness and update status on the main thread.
+            // If the manager gets deallocated before this executes, deinit handles the restore safely.
+            DispatchQueue.main.async { [weak self] in
+                self?.isRunning = false
+                self?.restoreBrightness()
             }
         }
     }
@@ -240,6 +266,9 @@ final class CameraManager: NSObject, ObservableObject {
     /// Saves the current display brightness and sets it to 1.0 (maximum).
     /// Uses the DisplayServices private framework which works on Apple Silicon.
     private func saveBrightnessAndMaximize() {
+        // Prevent overwriting the original saved brightness if it's already active
+        guard savedBrightness == nil else { return }
+
         guard let handle = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW) else { return }
         defer { dlclose(handle) }
 
