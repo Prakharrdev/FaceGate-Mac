@@ -11,6 +11,7 @@ final class FaceEnrollmentManager: ObservableObject {
     @Published var currentQuality: Float = 0
     @Published var statusMessage: String = "Position your face in the frame"
     @Published var warningMessage: String = ""
+    var isAddingFace: Bool = false
 
     /// Target number of frames to capture.
     let targetFrameCount = FGConstants.enrollmentFrameCount
@@ -86,8 +87,8 @@ final class FaceEnrollmentManager: ObservableObject {
 
     /// Cancel the enrollment process and clean up.
     func cancelEnrollment() {
-        cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
+        cameraManager.stopCapture()
         collectedEmbeddings = []
         state = .idle
         capturedCount = 0
@@ -190,17 +191,35 @@ final class FaceEnrollmentManager: ObservableObject {
     private func finishEnrollment() {
         state = .processing
         statusMessage = "Processing face data…"
-        cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
+        cameraManager.stopCapture()
 
-        let enrollment = FaceEnrollment(
-            embeddings: collectedEmbeddings,
-            enrolledDate: Date(),
-            averageQuality: totalQuality / Float(collectedEmbeddings.count)
-        )
+        let averageQuality = totalQuality / Float(collectedEmbeddings.count)
 
         do {
-            try dataStore.save(enrollment)
+            if isAddingFace {
+                var enrollment = dataStore.load() ?? FaceEnrollment(faces: [])
+                let nextFaceNumber = enrollment.faces.count + 1
+                let newFace = FaceEnrollment.EnrolledFace(
+                    id: UUID(),
+                    name: "Face \(nextFaceNumber)",
+                    embeddings: collectedEmbeddings,
+                    enrolledDate: Date(),
+                    averageQuality: averageQuality
+                )
+                enrollment.faces.append(newFace)
+                try dataStore.save(enrollment)
+            } else {
+                let newFace = FaceEnrollment.EnrolledFace(
+                    id: UUID(),
+                    name: "Face 1",
+                    embeddings: collectedEmbeddings,
+                    enrolledDate: Date(),
+                    averageQuality: averageQuality
+                )
+                let enrollment = FaceEnrollment(faces: [newFace])
+                try dataStore.save(enrollment)
+            }
 
             // Enable face unlock by default after successful enrollment.
             UserDefaults.standard.set(true, forKey: FGConstants.faceUnlockEnabledKey)

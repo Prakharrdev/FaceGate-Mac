@@ -116,7 +116,7 @@ final class FaceAuthManager: ObservableObject {
             return
         }
 
-        enrolledEmbeddings = enrollment.embeddings
+        enrolledEmbeddings = enrollment.faces.flatMap { $0.embeddings }
         onResult = completion
         frameCount = 0
         authStartTime = Date()

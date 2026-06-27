@@ -262,6 +262,9 @@ private struct AuthSettingsView: View {
         let stored = UserDefaults.standard.float(forKey: FGConstants.faceUnlockThresholdKey)
         return stored > 0 ? stored : FGConstants.defaultFaceUnlockThreshold
     }()
+    @State private var enrolledFaces: [FaceEnrollment.EnrolledFace] = []
+    @State private var isAddingFace = false
+    @State private var faceNames: [UUID: String] = [:]
 
     var body: some View {
         Form {
@@ -289,18 +292,83 @@ private struct AuthSettingsView: View {
                         }
                     }
 
-                    // Enroll / Re-enroll button.
-                    HStack {
-                        Button(faceEnrolled ? "Re-enroll Face" : "Enroll Face") {
-                            showFaceEnrollment = true
-                        }
-                        .controlSize(.small)
+                    // Enrolled Faces list
+                    if faceEnrolled && !enrolledFaces.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Enrolled Faces (Max 3)")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
 
-                        if faceEnrolled {
-                            Button("Delete Face Data") {
+                            ForEach(enrolledFaces) { face in
+                                HStack(spacing: 8) {
+                                    Image(systemName: "person.crop.circle.badge.checkmark")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.green)
+                                    
+                                    // Inline rename TextField
+                                    TextField("Face Name", text: Binding(
+                                        get: { faceNames[face.id] ?? face.name },
+                                        set: { faceNames[face.id] = $0 }
+                                    ), onEditingChanged: { isEditing in
+                                        if !isEditing {
+                                            if let name = faceNames[face.id] {
+                                                renameFace(id: face.id, newName: name)
+                                            }
+                                        }
+                                    }, onCommit: {
+                                        if let name = faceNames[face.id] {
+                                            renameFace(id: face.id, newName: name)
+                                        }
+                                    })
+                                    .textFieldStyle(.plain)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white)
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: {
+                                        deleteFace(id: face.id)
+                                    }) {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red.opacity(0.8))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)
+                                .background(Color.white.opacity(0.04))
+                                .cornerRadius(6)
+                            }
+                        }
+                    }
+
+                    // Enroll / Add Face / Delete buttons.
+                    HStack {
+                        if !faceEnrolled {
+                            Button("Enroll Face") {
+                                isAddingFace = false
+                                showFaceEnrollment = true
+                            }
+                            .controlSize(.small)
+                        } else {
+                            if enrolledFaces.count < 3 {
+                                Button("Add Face") {
+                                    isAddingFace = true
+                                    showFaceEnrollment = true
+                                }
+                                .controlSize(.small)
+                            }
+                            
+                            Button("Re-enroll Fresh") {
+                                isAddingFace = false
+                                showFaceEnrollment = true
+                            }
+                            .controlSize(.small)
+
+                            Button("Delete All Face Data") {
                                 try? FaceDataStore.shared.delete()
-                                faceEnrolled = false
-                                faceUnlockEnabled = false
+                                refreshEnrolledFaces()
                             }
                             .controlSize(.small)
                             .foregroundColor(.red)
@@ -449,14 +517,17 @@ private struct AuthSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .onAppear {
+            refreshEnrolledFaces()
+        }
         .sheet(isPresented: $showFaceEnrollment) {
             FaceEnrollmentView(
                 onComplete: {
                     showFaceEnrollment = false
-                    faceEnrolled = UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey)
-                    faceUnlockEnabled = UserDefaults.standard.bool(forKey: FGConstants.faceUnlockEnabledKey)
+                    refreshEnrolledFaces()
                 },
-                isInSettings: true
+                isInSettings: true,
+                isAddingFace: isAddingFace
             )
         }
     }
@@ -519,6 +590,53 @@ private struct AuthSettingsView: View {
         confirmPassword = ""
         passwordError = nil
         passwordSuccess = false
+    }
+
+    private func refreshEnrolledFaces() {
+        faceEnrolled = UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey)
+        faceUnlockEnabled = UserDefaults.standard.bool(forKey: FGConstants.faceUnlockEnabledKey)
+        if let enrollment = FaceDataStore.shared.load() {
+            enrolledFaces = enrollment.faces
+            for face in enrollment.faces {
+                if faceNames[face.id] == nil {
+                    faceNames[face.id] = face.name
+                }
+            }
+        } else {
+            enrolledFaces = []
+            faceNames = [:]
+        }
+    }
+
+    private func renameFace(id: UUID, newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            if let enrollment = FaceDataStore.shared.load(),
+               let index = enrollment.faces.firstIndex(where: { $0.id == id }) {
+                faceNames[id] = enrollment.faces[index].name
+            }
+            return
+        }
+        if var enrollment = FaceDataStore.shared.load() {
+            if let index = enrollment.faces.firstIndex(where: { $0.id == id }) {
+                enrollment.faces[index].name = trimmed
+                try? FaceDataStore.shared.save(enrollment)
+                faceNames[id] = trimmed
+                refreshEnrolledFaces()
+            }
+        }
+    }
+
+    private func deleteFace(id: UUID) {
+        if var enrollment = FaceDataStore.shared.load() {
+            enrollment.faces.removeAll(where: { $0.id == id })
+            if enrollment.faces.isEmpty {
+                try? FaceDataStore.shared.delete()
+            } else {
+                try? FaceDataStore.shared.save(enrollment)
+            }
+            refreshEnrolledFaces()
+        }
     }
 }
 
