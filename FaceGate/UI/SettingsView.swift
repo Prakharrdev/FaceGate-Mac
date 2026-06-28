@@ -630,6 +630,7 @@ private struct AuthSettingsView: View {
     private func deleteFace(id: UUID) {
         if var enrollment = FaceDataStore.shared.load() {
             enrollment.faces.removeAll(where: { $0.id == id })
+            faceNames.removeValue(forKey: id)  // clean up stale buffer entry
             if enrollment.faces.isEmpty {
                 try? FaceDataStore.shared.delete()
             } else {

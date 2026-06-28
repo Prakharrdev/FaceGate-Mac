@@ -56,7 +56,7 @@ struct FaceEnrollmentView: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 300)
 
-                if !isAddingFace {
+                if !isAddingFace && !isInSettings {
                     Text("You can add up to 3 faces from Settings")
                         .font(.system(size: 11))
                         .foregroundColor(.blue.opacity(0.85))
