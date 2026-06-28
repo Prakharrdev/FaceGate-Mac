@@ -38,7 +38,7 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 
 - **App Locking** — Lock any installed app. FaceGate intercepts launches in real-time and prevents access until authenticated.
 - **On-Device Face Recognition** — Software-based face embedding pipeline running entirely on your Mac via the Apple Neural Engine. No cloud, no data leaving your device.
-- **Multi-Face Enrollment** — Enroll up to 3 different faces so family or coworkers can also unlock apps.
+- **Multi-Face Enrollment** — Enroll up to 3 different faces or alternate looks.
 - **External Camera Support** — Use an external USB webcam instead of the built-in camera.
 - **Liveness Detection** — Head-pose challenges (turn left, turn right, tilt) to prevent photo and video spoofing.
 - **Touch ID** — Seamless integration with macOS Touch ID.
