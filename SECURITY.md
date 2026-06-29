@@ -16,7 +16,7 @@ Public issues help everyone see what's being worked on and avoid duplicate repor
 
 ## What Happens Next
 
-I'll acknowledge your report within 48 hours and work on a fix as soon as possible. You'll be credited for the discovery unless you request otherwise.
+I'll acknowledge your report within 48 hours and work on a fix as soon as possible.
 
 ## Scope
 
