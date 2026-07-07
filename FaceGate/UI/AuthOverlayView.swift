@@ -515,13 +515,17 @@ struct AuthOverlayView: View {
     private func authenticateWithTouchID() {
         authManager.stopFaceAuth()
 
+        // NOTE: Intentionally NOT calling NSApp.activate or makeKeyAndOrderFront
+        // here — Touch ID dialog needs uncontested focus.
         AppLocker.shared.setTouchIDMode()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             authManager.authenticateWithTouchID(appName: appName) { success in
                 AppLocker.shared.restoreTouchIDMode()
 
-                if !success {
+                if success {
+                } else {
+                    // Reclaim focus after Touch ID dismisses (3 retries).
                     func reclaimFocus(attemptsLeft: Int) {
                         guard attemptsLeft > 0 else { return }
                         if let panel = NSApp.windows.first(where: { $0 is AuthOverlayPanel && $0.isVisible }) {

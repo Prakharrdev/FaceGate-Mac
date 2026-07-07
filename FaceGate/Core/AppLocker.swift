@@ -149,6 +149,7 @@ final class AppLocker: ObservableObject {
 
     /// Configure overlays for Touch ID: lower window level and enable mouse event
     /// passthrough so the system Touch ID dialog can receive focus and events.
+    /// Mirrors the pattern used by MakLock's OverlayWindowService.setTouchIDMode(_:).
     func setTouchIDMode() {
         for panel in overlayPanels.values {
             panel.level = .statusBar
@@ -249,6 +250,7 @@ final class AppLocker: ObservableObject {
     /// Called when the user switches focus to another app.
     /// Gracefully hides the blocked application and dismisses overlays.
     func handleSwitchAway() {
+        // Don't hide the app — interferes with Touch ID focus.
         dismissOverlays()
         AuthenticationManager.shared.stopFaceAuth()
         onUnlockAction = nil
