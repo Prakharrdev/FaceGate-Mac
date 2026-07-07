@@ -154,6 +154,7 @@ final class AppMonitor: ObservableObject {
                     // before blocking the new one, since AppLocker only manages one block at a time.
                     let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
                     if overlayMode == 1 {
+                        AuthenticationManager.shared.stopFaceAuth()
                         AppLocker.shared.dismissOverlays()
                     }
                     // Do NOT return here. Let the code flow down to block the new app.

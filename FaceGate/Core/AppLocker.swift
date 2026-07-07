@@ -46,13 +46,13 @@ final class AppLocker: ObservableObject {
         blockedRunningApp = runningApp
         appMonitor.didBlockApp(bundleIdentifier)
 
-        // Step 1: Immediately hide the locked app if in Full Screen mode.
-        let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
-        if overlayMode == 0 {
-            runningApp.hide()
-        } else {
-            runningApp.activate(options: [.activateIgnoringOtherApps])
-        }
+        // Step 1: Present auth overlays FIRST so the locked app's content is never
+        // visible to the user. This prevents the privacy flash.
+        showOverlays(for: bundleIdentifier)
+
+        // Step 2: Bring the locked app forward so macOS stays on its space.
+        // Use orderFront-style activation — don't make it key or steal focus.
+        runningApp.activate(options: [])
 
         // Start Face ID authentication if available.
         if AuthenticationManager.shared.isFaceUnlockAvailable {
@@ -62,9 +62,6 @@ final class AppLocker: ObservableObject {
                 }
             }
         }
-
-        // Step 2: Present auth overlays.
-        showOverlays(for: bundleIdentifier)
     }
 
     /// Called when authentication succeeds — reveal the app and dismiss overlays.
