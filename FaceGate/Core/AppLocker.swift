@@ -47,11 +47,12 @@ final class AppLocker: ObservableObject {
         appMonitor.didBlockApp(bundleIdentifier)
 
         // Step 1: Present auth overlays FIRST so the locked app's content is never
-        // visible to the user. This prevents the privacy flash.
+        // visible to the user. This prevents the privacy flash described in Bug 4.
         showOverlays(for: bundleIdentifier)
 
         // Step 2: Bring the locked app forward so macOS stays on its space.
-        // Use orderFront-style activation — don't make it key or steal focus.
+        // Use orderFront-style activation — don't make it key or steal focus,
+        // as the system Touch ID dialog needs uncontested focus (MakLock pattern).
         runningApp.activate(options: [])
 
         // Start Face ID authentication if available.
@@ -142,6 +143,13 @@ final class AppLocker: ObservableObject {
         for panel in overlayPanels.values {
             panel.level = level
         }
+    }
+
+    /// Restore the overlay panels to their default window level based on the active shield mode.
+    func restoreOverlayWindowLevel() {
+        let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
+        let defaultLevel: NSWindow.Level = (overlayMode == 1) ? .floating : .screenSaver
+        setOverlayWindowLevel(defaultLevel)
     }
 
     // MARK: - Private
