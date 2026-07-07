@@ -20,7 +20,6 @@ struct AuthOverlayView: View {
     @State private var showPasswordField: Bool = false
     @State private var showFallbacks: Bool = false
     @State private var shakePassword: Bool = false
-    @State private var faceAuthStarted: Bool = false
     @State private var isTimedOut: Bool = false
     @State private var didAuthenticate: Bool = false
 
@@ -344,7 +343,6 @@ struct AuthOverlayView: View {
                         panel.makeKeyAndOrderFront(nil)
                     }
                     DispatchQueue.main.async {
-                        faceAuthStarted = true
                         authManager.authenticateWithFace { success in
                             if success {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
