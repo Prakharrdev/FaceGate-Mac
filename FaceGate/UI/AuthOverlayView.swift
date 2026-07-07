@@ -515,23 +515,26 @@ struct AuthOverlayView: View {
     private func authenticateWithTouchID() {
         authManager.stopFaceAuth()
 
-        // Ensure our window is key and active before triggering Touch ID so the system prompt gets focus.
-        NSApp.activate(ignoringOtherApps: true)
-        if let panel = NSApp.windows.first(where: { $0 is AuthOverlayPanel && $0.isVisible }) {
-            panel.makeKeyAndOrderFront(nil)
-        }
+        AppLocker.shared.setTouchIDMode()
 
-        // Delay slightly to let window focus transitions settle before requesting biometric verification.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             authManager.authenticateWithTouchID(appName: appName) { success in
-                // Reclaim focus after the system Touch ID sheet dismisses (Issue #96).
-                // The LAContext sheet steals key status; we restore it so Touch ID
-                // result buttons and the password field are immediately interactive.
-                NSApp.activate(ignoringOtherApps: true)
-                if let panel = NSApp.windows.first(where: { $0 is AuthOverlayPanel && $0.isVisible }) {
-                    panel.makeKeyAndOrderFront(nil)
-                }
+                AppLocker.shared.restoreTouchIDMode()
+
                 if !success {
+                    func reclaimFocus(attemptsLeft: Int) {
+                        guard attemptsLeft > 0 else { return }
+                        if let panel = NSApp.windows.first(where: { $0 is AuthOverlayPanel && $0.isVisible }) {
+                            NSApp.activate(ignoringOtherApps: true)
+                            panel.makeKeyAndOrderFront(nil)
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            reclaimFocus(attemptsLeft: attemptsLeft - 1)
+                        }
+                    }
+
+                    reclaimFocus(attemptsLeft: 3)
+
                     withAnimation {
                         showFallbacks = true
                     }

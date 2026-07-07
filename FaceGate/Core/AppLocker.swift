@@ -147,6 +147,25 @@ final class AppLocker: ObservableObject {
         }
     }
 
+    /// Configure overlays for Touch ID: lower window level and enable mouse event
+    /// passthrough so the system Touch ID dialog can receive focus and events.
+    func setTouchIDMode() {
+        for panel in overlayPanels.values {
+            panel.level = .statusBar
+            panel.ignoresMouseEvents = true
+        }
+    }
+
+    /// Restore overlays after Touch ID completes (reverses setTouchIDMode).
+    func restoreTouchIDMode() {
+        let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
+        let defaultLevel: NSWindow.Level = (overlayMode == 1) ? .floating : .screenSaver
+        for panel in overlayPanels.values {
+            panel.level = defaultLevel
+            panel.ignoresMouseEvents = false
+        }
+    }
+
     // MARK: - Private
 
     /// Create and show auth overlay panels.
@@ -230,10 +249,6 @@ final class AppLocker: ObservableObject {
     /// Called when the user switches focus to another app.
     /// Gracefully hides the blocked application and dismisses overlays.
     func handleSwitchAway() {
-        let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
-        if overlayMode == 0 {
-            blockedRunningApp?.hide()
-        }
         dismissOverlays()
         AuthenticationManager.shared.stopFaceAuth()
         onUnlockAction = nil
