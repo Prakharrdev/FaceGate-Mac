@@ -162,6 +162,7 @@ final class AppMonitor: ObservableObject {
                     let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
                     if overlayMode == 0 {
                         guard !AuthenticationManager.shared.isTouchIDInProgress else { return }
+                        // Only hide and dismiss on switch-away in Full Screen mode
                         AppLocker.shared.handleSwitchAway()
                     }
                     return

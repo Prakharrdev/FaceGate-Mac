@@ -177,6 +177,8 @@ struct AuthOverlayView: View {
             .animation(.easeInOut(duration: 0.2), value: authManager.authState)
         }
         .onAppear {
+            // Only the primary screen triggers Touch ID — secondary screens show the
+            // blur/overlay without firing a duplicate LAContext evaluation (Bug 1).
             if isPrimary && !authManager.isFaceUnlockAvailable {
                 if TouchIDAuth.shared.canUse {
                     authenticateWithTouchID()
