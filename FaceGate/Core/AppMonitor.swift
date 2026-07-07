@@ -161,7 +161,7 @@ final class AppMonitor: ObservableObject {
                     // The new app is either not locked or has an active session.
                     let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
                     if overlayMode == 0 {
-                        // Only hide and dismiss on switch-away in Full Screen mode
+                        guard !AuthenticationManager.shared.isTouchIDInProgress else { return }
                         AppLocker.shared.handleSwitchAway()
                     }
                     return

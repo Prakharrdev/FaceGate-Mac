@@ -8,6 +8,7 @@ struct AuthOverlayView: View {
     let appName: String
     let appIcon: NSImage
     var isAppLocking: Bool = true
+    var isPrimary: Bool = true
     var cancelButtonTitle: String = "Cancel & Close App"
     var subtitleMessage: String? = nil
     let onAuthenticated: () -> Void
@@ -176,7 +177,7 @@ struct AuthOverlayView: View {
             .animation(.easeInOut(duration: 0.2), value: authManager.authState)
         }
         .onAppear {
-            if !authManager.isFaceUnlockAvailable {
+            if isPrimary && !authManager.isFaceUnlockAvailable {
                 if TouchIDAuth.shared.canUse {
                     authenticateWithTouchID()
                 } else {

@@ -191,12 +191,42 @@ final class AppLocker: ObservableObject {
                 showTemporaryFullScreenOverlay(appName: appName, bundleIdentifier: bundleIdentifier)
             }
         } else {
-            // Present auth overlays on all screens.
-            for (index, screen) in screens.enumerated() {
+            var targetScreens: [(index: Int, screen: NSScreen)] = []
+
+            if let app = blockedRunningApp {
+                let appWindows = getAppWindowFrames(for: app.processIdentifier)
+                if !appWindows.isEmpty {
+                    var seenIndices = Set<Int>()
+                    for (index, screen) in screens.enumerated() {
+                        for (_, windowFrame) in appWindows {
+                            let appKitFrame = convertQuartzToAppKit(rect: windowFrame)
+                            if screen.frame.intersects(appKitFrame) {
+                                if seenIndices.insert(index).inserted {
+                                    targetScreens.append((index: index, screen: screen))
+                                }
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+
+            if targetScreens.isEmpty {
+                if let screen = activeScreen {
+                    let index = screens.firstIndex(of: screen) ?? 0
+                    targetScreens.append((index: index, screen: screen))
+                } else if let screen = screens.first {
+                    targetScreens.append((index: 0, screen: screen))
+                }
+            }
+
+            for (index, screen) in targetScreens {
+                let isScreenPrimary = (targetScreens.count == 1) || (screen == activeScreen)
                 let panel = AuthOverlayPanel(
                     screen: screen,
                     appName: appName,
                     bundleIdentifier: bundleIdentifier,
+                    isPrimary: isScreenPrimary,
                     onAuthenticated: { [weak self] in
                         self?.unlockCurrentApp()
                     },
@@ -204,7 +234,7 @@ final class AppLocker: ObservableObject {
                         self?.terminateBlockedApp()
                     }
                 )
-                if screen == activeScreen {
+                if isScreenPrimary {
                     panel.makeKeyAndOrderFront(nil)
                     panel.makeMain()
                 } else {
@@ -236,6 +266,7 @@ final class AppLocker: ObservableObject {
         }
         dismissOverlays()
         AuthenticationManager.shared.stopFaceAuth()
+        AuthenticationManager.shared.stopTouchIDAuth()
         onUnlockAction = nil
         currentlyBlockedApp = nil
         blockedRunningApp = nil
