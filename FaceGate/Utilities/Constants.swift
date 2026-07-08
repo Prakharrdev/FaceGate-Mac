@@ -174,6 +174,21 @@ enum FGConstants {
     /// App display name.
     static let appName = "FaceGate"
 
+    // MARK: - File Protection
+
+    /// Keychain account key for the master file protection key.
+    static let keychainFileProtectionKeyAccount = "fileProtectionMasterKey"
+
+    /// Key: whether file protection is enabled.
+    static let fileProtectionEnabledKey = "fileProtectionEnabled"
+
+    /// Temporary directory for decrypted files.
+    static var fileProtectionTempDir: URL {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("com.dweep.FaceGate.files", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
     // MARK: - Sparkle
 
     /// URL for the Sparkle appcast feed.

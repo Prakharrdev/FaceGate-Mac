@@ -21,6 +21,7 @@ struct SettingsView: View {
 
     enum SettingsTab: String, CaseIterable, Identifiable {
         case lockedApps = "Locked Apps"
+        case fileProtection = "File Protection"
         case authentication = "Authentication"
         case behavior = "Behavior"
         case about = "About"
@@ -30,6 +31,7 @@ struct SettingsView: View {
         var icon: String {
             switch self {
             case .lockedApps: return "lock.app.dashed"
+            case .fileProtection: return "doc.badge.shield.fill"
             case .authentication: return "person.badge.key.fill"
             case .behavior: return "gearshape.2.fill"
             case .about: return "info.circle.fill"
@@ -39,6 +41,7 @@ struct SettingsView: View {
         var description: String {
             switch self {
             case .lockedApps: return "Choose which apps require authentication."
+            case .fileProtection: return "Protect files with face authentication. Files stay in place."
             case .authentication: return "Tune Face Unlock, Touch ID, and password fallback."
             case .behavior: return "Adjust launch, locking, schedules, and emergency controls."
             case .about: return "Version, license, and project details."
@@ -212,6 +215,8 @@ private struct SettingsDetailPane: View {
         switch selectedTab {
         case .lockedApps:
             LockedAppsSettingsView()
+        case .fileProtection:
+            FileProtectionSettingsView()
         case .authentication:
             AuthSettingsView()
         case .behavior:

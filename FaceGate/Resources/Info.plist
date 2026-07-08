@@ -36,5 +36,53 @@
     <true/>
     <key>SUScheduledCheckInterval</key>
     <integer>86400</integer>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.dweep.FaceGate</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>facegate</string>
+            </array>
+        </dict>
+    </array>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>FaceGate Protected File</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.dweep.facegate.protected-file</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.dweep.facegate.protected-file</string>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>facegate</string>
+                </array>
+            </dict>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeDescription</key>
+            <string>FaceGate Protected File</string>
+            <key>UTTypeIconName</key>
+            <string>FaceGateFile</string>
+        </dict>
+    </array>
 </dict>
 </plist>

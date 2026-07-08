@@ -56,6 +56,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Register secret kill hotkey.
         GlobalHotkeyManager.shared.registerShortcut()
 
+        // Initialize file protection monitoring.
+        _ = FileProtectionManager.shared
+
         // Listen for "open settings" notifications from MenuBarView.
         NotificationCenter.default.addObserver(
             self,
@@ -70,6 +73,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             selector: #selector(openSetupWindow),
             name: .openSetup,
             object: nil
+        )
+
+        // Register URL handler for .facegate files.
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURLEvent(_:replyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
         )
 
         // Lock all apps when the Mac sleeps or locks (if enabled).
@@ -303,6 +314,105 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } catch {
             print("[FaceGate] Failed to sync uninstall protection on launch: \(error)")
         }
+    }
+}
+
+// MARK: - File Protection URL Handling
+
+extension AppDelegate {
+    @objc func handleGetURLEvent(_ event: NSAppleEventDescriptor, replyEvent: NSAppleEventDescriptor) {
+        guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+              let url = URL(string: urlString) else { return }
+
+        if url.scheme == "facegate" {
+            handleFinderSyncAction(url)
+        } else if url.scheme == "file" {
+            handleProtectedFile(at: url)
+        }
+    }
+
+    func application(_ sender: NSApplication, open urls: [URL]) {
+        for url in urls {
+            if url.scheme == "facegate" {
+                handleFinderSyncAction(url)
+            } else if url.scheme == "file" {
+                handleProtectedFile(at: url)
+            }
+        }
+    }
+
+    private func handleFinderSyncAction(_ url: URL) {
+        guard let action = url.host,
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let pathQuery = components.queryItems?.first(where: { $0.name == "path" })?.value else { return }
+
+        let fileURL = URL(fileURLWithPath: pathQuery)
+
+        switch action {
+        case "protect":
+            FileProtectionManager.shared.protectFile(at: fileURL) { _, _ in }
+        case "unprotect":
+            FileProtectionManager.shared.unprotectFile(at: fileURL) { _, _ in }
+        case "open":
+            FileProtectionManager.shared.openProtectedFile(at: fileURL) { _, _ in }
+        case "info":
+            showProtectedFileInfo(at: fileURL)
+        default:
+            break
+        }
+    }
+
+    private func showProtectedFileInfo(at url: URL) {
+        guard let file = MetadataDatabase.shared.file(forCurrentPath: url.path) else { return }
+        let alert = NSAlert()
+        alert.messageText = file.displayName
+        alert.informativeText = """
+        Size: \(file.displaySize)
+        Protected: \(file.createdAt.formatted(date: .abbreviated, time: .shortened))
+        Path: \(file.currentPath)
+        """
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        let url = URL(fileURLWithPath: filename)
+        return handleProtectedFile(at: url)
+    }
+
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        for filename in filenames {
+            let url = URL(fileURLWithPath: filename)
+            _ = handleProtectedFile(at: url)
+        }
+    }
+
+    @discardableResult
+    func handleProtectedFile(at url: URL) -> Bool {
+        guard url.pathExtension.lowercased() == EncryptedFileFormat.fileExtension else { return false }
+
+        let metadataDB = MetadataDatabase.shared
+        guard metadataDB.fileExists(withCurrentPath: url.path) else {
+            let alert = NSAlert()
+            alert.messageText = "Unknown Protected File"
+            alert.informativeText = "This file is not in the FaceGate protection database. It may have been protected on another device."
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return false
+        }
+
+        FileProtectionManager.shared.openProtectedFile(at: url) { success, error in
+            if !success, let error = error {
+                DispatchQueue.main.async {
+                    let alert = NSAlert()
+                    alert.messageText = "Failed to Open File"
+                    alert.informativeText = error
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        }
+        return true
     }
 }
 

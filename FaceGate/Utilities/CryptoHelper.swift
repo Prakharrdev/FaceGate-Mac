@@ -64,6 +64,7 @@ final class CryptoHelper {
         let encrypted = try Data(contentsOf: url)
         return try decrypt(encrypted)
     }
+
 }
 
 // MARK: - Errors
